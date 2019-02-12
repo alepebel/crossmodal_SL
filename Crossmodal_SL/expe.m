@@ -1,7 +1,6 @@
 function expe()
-cd D:\Brainvitge\Exp_Guay
-
 sca;
+%PsychPortAudio('Close');
 close all;
 clearvars;
 
@@ -33,12 +32,13 @@ init.kb_scanlist = zeros(1,256); init.kb_scanlist(32)=1; %scan only the spacebar
 init.windows_os = ispc;
 init.freq = 44100; %audio playback freq
 init.target_noise_pct = 0.7; %percentage of noise in audio targets
-init.training_block = true;
+init.training_block = true; %true;
 init.examples={'norm-filter-example', 'noise-filter-example','example-norm','example-noise'};
 init.block_size = 165;
 init.blocks = 8;
-init.debug = 1;
+init.debug = 0;
 init.max_time_to_detect = 2; %number of stimuli that can pass between a target stimulus onset and the keypress to qualify as a correct detection
+init.show_square = false; %white square in the corner used for calibration
 
 target_undetected = false;
 time_to_detect = 0;
@@ -163,10 +163,10 @@ try
     devices = PsychPortAudio('GetDevices');
     device = devices(find([devices.HostAudioAPIId]==3,1)); %select ASIO device (==3)
     pahandle = PsychPortAudio('Open', device.DeviceIndex, 1, 0, init.freq, nrchannels);
-   
-    % Screen setup
-    PsychDefaultSetup(2);sca
+    %pahandle = PsychPortAudio('Open', [], 1, 0, init.freq, nrchannels);
     
+    % Screen setup
+    PsychDefaultSetup(2);
     screens=Screen('Screens');
     screenNumber=max(screens);
     if init.debug
@@ -177,6 +177,7 @@ try
     [window, windowRect]=Screen('OpenWindow', screenNumber);
     [init.w, init.h] = RectSize(windowRect);
     init.center = [init.w/2 init.h/2];
+    init.squareRect = CenterRectOnPointd([0 0 300 300], floor(init.center(1)*1.5), floor(init.center(2)*0.5));
     init.black=BlackIndex(screenNumber);
     init.white=WhiteIndex(screenNumber);
     init.ifi = Screen('GetFlipInterval', window);
@@ -583,6 +584,10 @@ end
                 captureKeyPresses(vbl+(waitframes-0.5)*init.ifi-init.time_before_flip);
             end
             
+            if init.show_square
+                Screen('FillRect', window, [255 255 255, 255], init.squareRect);
+            end
+            
             Screen('Flip', window, vbl+(waitframes-0.5)*init.ifi,0,1);
             vbl = PsychPortAudio('Start', pahandle, 1,  vbl+(waitframes-0.5)*init.ifi, 1, inf); %stimulus appears
             init.sec = [init.sec GetSecs()];
@@ -594,6 +599,8 @@ end
                 Screen('DrawTexture', window, textures(sti_index), [], init.imageRect, 0);
                 texture = textures(sti_index);
             end
+            
+             
             fixationPoint(fixation);
             init.sec = [init.sec GetSecs()];
             
@@ -601,6 +608,10 @@ end
                 captureKeyPresses(vbl+(waitframes-0.5)*init.ifi-init.time_before_flip);
             end
             current_image = texture;
+            
+             if init.show_square
+                Screen('FillRect', window, [255 255 255, 255], init.squareRect);
+            end
             vbl = Screen('Flip', window, vbl+(waitframes-0.5)*init.ifi); %stimulus appears
             init.sec = [init.sec GetSecs()];
         end
