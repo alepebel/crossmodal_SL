@@ -13,6 +13,9 @@ global init window textures vbl pahandle target_textures
 global istraining tp fp current_image
 
 % Experiment variables
+init.ph_width = 0.53; init.ph_height = 0.30; %screen dimensions in m
+init.view_distance = 0.5; %in m
+init.view_angle = 20;
 init.version = 1.1;
 init.stimulus_dur = 0.500;
 init.isi = 0.250;
@@ -36,9 +39,12 @@ init.training_block = true; %true;
 init.examples={'norm-filter-example', 'noise-filter-example','example-norm','example-noise'};
 init.block_size = 331;
 init.blocks = 8;
-init.debug = 0;
+init.debug = 1;
 init.max_time_to_detect = 2; %number of stimuli that can pass between a target stimulus onset and the keypress to qualify as a correct detection
 init.show_square = false; %white square in the corner used for calibration
+
+init.image_ph_height = tan(degtorad(init.view_angle/2))*init.view_distance*2;
+init.image_ph_width = init.image_ph_height; %image dimensions in m
 
 target_undetected = false;
 time_to_detect = 0;
@@ -162,12 +168,14 @@ try
     
     devices = PsychPortAudio('GetDevices');
     device = devices(find([devices.HostAudioAPIId]==3,1)); %select ASIO device (==3)
-    pahandle = PsychPortAudio('Open', device.DeviceIndex, 1, 0, init.freq, nrchannels);
+   % pahandle = PsychPortAudio('Open', [], 1, 0, init.freq, nrchannels);
+     pahandle = PsychPortAudio('Open', device.DeviceIndex, 1, 0, init.freq, nrchannels);
     %pahandle = PsychPortAudio('Open', [], 1, 0, init.freq, nrchannels);
     
     % Screen setup
-    PsychDefaultSetup(2);
+    PsychDefaultSetup(2); sca
     screens=Screen('Screens');
+  %  Screen('Preference', 'SkipSyncTests', 1);
     screenNumber=max(screens);
     if init.debug
         PsychDebugWindowConfiguration(0,0.5);
@@ -236,8 +244,9 @@ try
         end
     end
     
-    heightImage = init.widthImage / init.aspectRatio;
-    init.imageRect = [0 0 init.widthImage heightImage];
+    init.image_px_height = init.image_ph_height * init.h/init.ph_height;
+    init.image_px_width = init.image_ph_width * init.w/init.ph_width;
+    init.imageRect = [0 0 init.image_px_width init.image_px_height];
     init.imageRect = CenterRectOnPointd(init.imageRect, init.center(1), init.center(2));
     
     %preparing fixation point
@@ -294,16 +303,16 @@ try
 
 
         Screen('FillRect', window, 0);
-        DrawFormattedText(window, strcat(WrapString('Durante este experimento se te ir√°n mostrando dos tipos de est√≠mulos: im√°genes o sonidos.',60), WrapString('\n\nA veces estos est√≠mulos aparecer√°n distorsionados al hab√©rseles a√±adido ruido. A continuaci√≥n se te mostrar√°n ejemplos de estas distorsiones.',60), '\n\nPresiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
+        DrawFormattedText(window, strcat(WrapString('Durante este experimento se te ir·n mostrando dos tipos de estÌmulos: im·genes o sonidos.',60), WrapString('\n\nA veces estos estÌmulos aparecer·n distorsionados al habÈrseles aÒadido ruido. A continuaciÛn se te mostrar·n ejemplos de estas distorsiones.',60), '\n\nPresiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
         Screen('Flip',window);
         KbWait([],3);
 
         Screen('FillRect', window, 0);
         DrawFormattedText_mod(window, 'Normal', 'center', init.h*0.1, 255, -init.w*0.1125);
-        DrawFormattedText_mod(window, 'Distorsi√≥n', 'center', init.h*0.1, 255, +init.w*0.2625);
+        DrawFormattedText_mod(window, 'DistorsiÛn', 'center', init.h*0.1, 255, +init.w*0.2625);
         Screen('DrawTexture', window, texture_std, [], imageRect_std, 0);
         Screen('DrawTexture', window, texture_target, [], imageRect_target, 0);
-        DrawFormattedText_mod(window, 'Im√°genes', 'center', init.center(2)-init.h*0.1, 255, -init.w*0.3750);
+        DrawFormattedText_mod(window, 'Im·genes', 'center', init.center(2)-init.h*0.1, 255, -init.w*0.3750);
         DrawFormattedText_mod(window, 'Audios', 'center', init.center(2)+init.h*0.2, 255, -init.w*0.3750);
         DrawFormattedText_mod(window, 'Presiona la tecla Z\n para escuchar', 'center', init.center(2)+init.h*0.2, 255, -init.w*0.1125);
         DrawFormattedText_mod(window, 'Presiona la tecla X\n para escuchar', 'center', init.center(2)+init.h*0.2, 255, +init.w*0.2625);
@@ -333,7 +342,7 @@ try
         end
         
         % Training instructions
-        DrawFormattedText(window, strcat(WrapString('Ahora se te mostrar√° una serie de varios est√≠mulos de este tipo. Este bloque es de prueba para familiarizarte con ellos y con la tarea. Pulsa la barra espaciadora cuando aparezca un est√≠mulo distorsionado con ruido (sea imagen o audio). Mant√©n la mirada fija en la cruz del centro.',60), '\n\nAparecer√° una X cuando falles, azul si no detectas una distorsi√≥n \n y roja si pulsas cuando no hab√≠a distorsi√≥n.\n\nPresiona cualquier tecla para comenzar.'), 'center', 'center', [255 255 255, 255]);
+        DrawFormattedText(window, strcat(WrapString('Ahora se te mostrar· una serie de varios estÌmulos de este tipo. Este bloque es de prueba para familiarizarte con ellos y con la tarea. Pulsa la barra espaciadora cuando aparezca un estÌmulo distorsionado con ruido (sea imagen o audio). MantÈn la mirada fija en la cruz del centro.',60), '\n\nAparecer· una X cuando falles, azul si no detectas una distorsiÛn \n y roja si pulsas cuando no habÌa distorsiÛn.\n\nPresiona cualquier tecla para comenzar.'), 'center', 'center', [255 255 255, 255]);
         Screen('Flip',window);
         WaitSecs(1);
         KbWait([],3);
@@ -362,13 +371,13 @@ try
             precision = tp/(tp+fp); recall = tp/total_targets;
             fscore = 2/(inv(precision)+inv(recall));
             if fscore < 0.8
-                DrawFormattedText(window, strcat('Fin del entrenamiento. \nPuntuaci√≥n: ',num2str(fscore*100),'% \n Repetir√°s el entrenamiento hasta obtener una puntuaci√≥n mayor que el 80%\nPresiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
+                DrawFormattedText(window, strcat('Fin del entrenamiento. \nPuntuaciÛn: ',num2str(fscore*100),'% \n Repetir·s el entrenamiento hasta obtener una puntuaciÛn mayor que el 80%\nPresiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
                 Screen('Flip',window);
                 WaitSecs(1);
                 KbWait([],3);
             end
         end
-        DrawFormattedText(window, strcat('Fin del entrenamiento. \nPuntuaci√≥n: ',num2str(fscore*100),'% \n ¬°Muy bien! \n Presiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
+        DrawFormattedText(window, strcat('Fin del entrenamiento. \nPuntuaciÛn: ',num2str(fscore*100),'% \n °Muy bien! \n Presiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
         Screen('Flip',window);
         WaitSecs(1);
         KbWait([],3);
@@ -376,7 +385,7 @@ try
     istraining = false;
     
     % Instructions
-    DrawFormattedText(window, strcat(WrapString(strcat('Igual que en el anterior bloque, vas a ver y oir diferentes est√≠mulos. Estos a veces aparecer√°n distorsionados, pero con menor frecuencia que en el bloque anterior. Pulsa la barra espaciadora cuando aparezca un est√≠mulo distorsionado. Mant√©n la mirada fija en la cruz del centro. El experimento est√° dividido en ',num2str(init.num_blocks),' bloques, entre los cuales podr√°s tomarte un espiro.'),60), '\n\nPresiona cualquier tecla para comenzar el experimento.'), 'center', 'center', [255 255 255, 255]);
+    DrawFormattedText(window, strcat(WrapString(strcat('Igual que en el anterior bloque, vas a ver y oir diferentes estÌmulos. Estos a veces aparecer·n distorsionados, pero con menor frecuencia que en el bloque anterior. Pulsa la barra espaciadora cuando aparezca un estÌmulo distorsionado. MantÈn la mirada fija en la cruz del centro. El experimento est· dividido en ',num2str(init.num_blocks),' bloques, entre los cuales podr·s tomarte un espiro.'),60), '\n\nPresiona cualquier tecla para comenzar el experimento.'), 'center', 'center', [255 255 255, 255]);
     Screen('Flip',window);
     while ~KbCheck
     end
@@ -395,7 +404,7 @@ try
             total_targets = sum(init.task_target((block-1)*init.block_size+1:block*init.block_size));
             precision = tp/(tp+fp); recall = tp/total_targets;
             fscore = 2/(inv(precision)+inv(recall));
-            DrawFormattedText(window, strcat('Fin del bloque ',' ',num2str(block),'. \nPuntuaci√≥n: ',num2str(fscore*100),'% \n Presiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
+            DrawFormattedText(window, strcat('Fin del bloque ',' ',num2str(block),'. \nPuntuaciÛn: ',num2str(fscore*100),'% \n Presiona cualquier tecla para continuar.'), 'center', 'center', [255 255 255, 255]);
             Screen('Flip',window);
             block = block+1;
             WaitSecs(1);
@@ -409,13 +418,13 @@ try
     end
     
     % Test instructions
-    DrawFormattedText(window, strcat(WrapString('¬°Tarea finalizada! Avisa al experimentrador.\nAhora se te mostrar√°n pares de secuencias de dos est√≠mulos, selecciona la que creas haber visto durante la tarea anterior usando las teclas de direcci√≥n izquierda (para la primera secuencia) y derecha (para la segunda secuencia)',50), '\n Presiona cualquier tecla para continuar con las instrucciones.'), 'center', 'center', [255 255 255, 255]);
+    DrawFormattedText(window, strcat(WrapString('°Tarea finalizada! Avisa al experimentrador.\nAhora se te mostrar·n pares de secuencias de dos estÌmulos, selecciona la que creas haber visto durante la tarea anterior usando las teclas de direcciÛn izquierda (para la primera secuencia) y derecha (para la segunda secuencia)',50), '\n Presiona cualquier tecla para continuar con las instrucciones.'), 'center', 'center', [255 255 255, 255]);
     Screen('Flip',window);
     while ~KbCheck
     end
     WaitSecs(1);
     
-    DrawFormattedText(window, strcat(WrapString('Tras indicar qu√© secuencia te resultaba m√°s familiar, se te preguntar√° por qu√© has seleccionado esa secuencia, tendr√°s que seleccionar usando las teclas Z, X y C una de las siguientes alternativas:',50), '\n Z: Recuerdo la secuencia.', '\n X: Me era m√°s familiar la secuencia.', '\n C: He escogido al azar.', '\n Presiona cualquier tecla para comenzar.'), 'center', 'center', [255 255 255, 255]);
+    DrawFormattedText(window, strcat(WrapString('Tras indicar quÈ secuencia te resultaba m·s familiar, se te preguntar· por quÈ has seleccionado esa secuencia, tendr·s que seleccionar usando las teclas Z, X y C una de las siguientes alternativas:',50), '\n Z: Recuerdo la secuencia.', '\n X: Me era m·s familiar la secuencia.', '\n C: He escogido al azar.', '\n Presiona cualquier tecla para comenzar.'), 'center', 'center', [255 255 255, 255]);
     Screen('Flip',window);
     while ~KbCheck
     end
@@ -434,15 +443,15 @@ try
         oldTextSize = Screen('TextSize', window ,50);
         for test_pair=1:2
             Screen('TextSize', window ,oldTextSize);
-            DrawFormattedText(window, strcat(WrapString(strcat('Presiona cualquier tecla para ver la ',num2str(test_pair),'¬™ secuencia de est√≠mulos'))), 'center', 'center', [255 255 255, 255]);
+            DrawFormattedText(window, strcat(WrapString(strcat('Presiona cualquier tecla para ver la ',num2str(test_pair),'™ secuencia de estÌmulos'))), 'center', 'center', [255 255 255, 255]);
             Screen('Flip',window);
             oldTextSize = Screen('TextSize', window ,50);
             vbl = KbWait([],3);
             pair_key = test.pair_keys(trial_keys(test_pair),:);
             
             %TODO comprobar que funcione bien; seems to work bien, aunque
-            %podr√≠a testear con un n√∫mero de pares o algo o quiz√°s ser√≠a
-            %mucho l√≠o
+            %podrÌa testear con un n˙mero de pares o algo o quiz·s serÌa
+            %mucho lÌo
             
             pair = init.pair_stimuli(pair_key);
             pair_modality = init.pair_modalities(pair_key);
@@ -544,7 +553,7 @@ try
         vbl = GetSecs;
     end
     
-    DrawFormattedText(window, WrapString('¬°Gracias por participar!\nAvisa al experimentador de que has terminado el experimento.',40), 'center', 'center', [255 255 255, 255]);
+    DrawFormattedText(window, WrapString('°Gracias por participar!\nAvisa al experimentador de que has terminado el experimento.',40), 'center', 'center', [255 255 255, 255]);
     vbl = Screen('Flip',window);
     WaitSecs(1);
     while ~KbCheck
@@ -698,4 +707,5 @@ end
             end
         end
     end
+
 end
