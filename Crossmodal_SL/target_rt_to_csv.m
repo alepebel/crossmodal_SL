@@ -1,4 +1,4 @@
-log_files = strcat(pwd,filesep,'logs',filesep,'useful_data',filesep,ls(strcat('logs',filesep,'useful_data',filesep,'*.mat')))
+log_files = strcat(pwd,filesep,'logs',filesep,ls(strcat('logs',filesep,'*.mat')))
 n_sujes = size(log_files,1);
 
 subject = [];

@@ -39,7 +39,7 @@ init.training_block = true; %true;
 init.examples={'norm-filter-example', 'noise-filter-example','example-norm','example-noise'};
 init.block_size = 331;
 init.blocks = 8;
-init.debug = 1;
+init.debug = 0;
 init.max_time_to_detect = 2; %number of stimuli that can pass between a target stimulus onset and the keypress to qualify as a correct detection
 init.show_square = false; %white square in the corner used for calibration
 
