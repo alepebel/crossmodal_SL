@@ -1,0 +1,445 @@
+---
+title: "Exposure_analysis"
+author: "Alexis Perez-Bellido & Daniel Duato"
+date: "5/22/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## R Markdown
+Loading packages and setting paths
+
+```{r, echo = FALSE}
+library(readr)
+library(tidyverse)
+library(retimes)
+library(ez)
+setwd("/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/R/Exp_1")
+```
+Reading exposure data and properly code the variables
+```{r}
+oddball <- read_csv('/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/exposure_oddballs.csv',col_types = cols())
+oddball$subject = factor(oddball$subject, ordered=TRUE)
+oddball$modality = factor(oddball$modality,labels=c("V","A"))
+oddball$leading = factor(oddball$leading,labels=c("Leading","Trailing"))
+oddball$pair_modality = factor(oddball$pair_modality, labels=c("AA","VV","AV","VA"))
+oddball$next_mod = factor(oddball$next_mod,labels=c("V","A")) #the modality of the following stimulus (probably not useful)
+oddball$modal_comb <- "multisensory" #conditions aggregated into multimodal/unimodal
+oddball$modal_comb[oddball$pair_modality == "AA" | oddball$pair_modality == "VV"] <- "unisensory"
+oddball$stimulus = factor(oddball$stimulus)
+oddball$pair = factor(oddball$pair)
+oddball$mod_switch = factor(oddball$mod_switch, labels = c("noswitch", "switch"))
+
+head(oddball)
+```
+
+Now I am going to load the keypresses and relate to the timings of the oddballs
+
+```{r}
+#loading keypresses info
+keypresses <- read_csv("/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/exposure_keypresses.csv",col_types = cols())
+keypresses$subject = factor(keypresses$subject, ordered=TRUE)
+
+shortest_rt <- 0.2 # this is the minimum time that is considered as a response to the target
+longest_rt <- 1.5 # this is the maximum time considered as a response
+
+oddball <- oddball %>%
+  mutate( closest_press = map2_dbl(oddball$onset, oddball$subject, function(x, y) which(keypresses$subject==y & keypresses$time-(x + shortest_rt)>=0)[1])) %>%
+  mutate( rt = keypresses$time[closest_press]-onset) %>%
+  replace_na(list(rt = Inf)) %>%
+  mutate( detected = rt < longest_rt)
+
+
+oddball <- oddball %>% mutate(part = ifelse(block >4, 1, 0))
+oddball$part <- factor(oddball$part)
+
+head(subset(oddball, subject == 40),1000)
+oddball$detected = as.integer(oddball$detected)
+
+
+
+```
+
+
+diff(subset(oddball, subject == 9)$onset)
+
+
+hist(subset(oddball, detected == "TRUE")$rt)
+keypresses
+Looking at the impact of stimulus type on detection
+```{r}
+
+oddball %>% group_by(subject, stimulus) %>% summarise(hits = mean(detected, na.rm=TRUE))
+
+```
+
+```{r}
+
+stim_detec <- oddball %>% group_by(stimulus) %>% mutate(hits = mean(detected))
+
+ggplot(subset(oddball), aes(x=as.numeric(stimulus), y=as.numeric(detected), col = modality)) + 
+  scale_color_manual( values =  c("blue","orange"))+ scale_fill_manual( values =  c("blue","orange")) + 
+  geom_point( data = stim_detec, aes(x = stimulus, y = hits), col = "black" ) + geom_smooth() + ylab("hits") + xlab("stim ID") +
+  theme_bw(20) + theme(axis.text=element_text(size=16), axis.title=element_text(size=14),axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(),panel.background = element_blank()) + ggtitle("Stimulus detection") + ylim(c(0.0, 1.1))
+
+```
+
+See general performance across blocks
+
+```{r}
+group_detect_part <- oddball %>% 
+  group_by( subject, modality, mod_switch, leading, part) %>% 
+  summarise(hits = mean(detected, na.rm=TRUE))
+
+group_diffdetect_part <- subset(group_detect_part, leading == "Trailing")
+group_diffdetect_part$hits <-group_diffdetect_part$hits -  subset(group_detect_part, leading == "Leading")$hits
+#group_diffdetect_part$rt <-group_diffdetect_part$rt -  subset(group_detect_part, leading == "Leading")$rt
+
+group_diffdetect_part$part <- factor(group_diffdetect_part$part)
+ezANOVA(group_diffdetect_part, dv=.(hits), wid = .(subject), within = .( mod_switch, modality,part))
+
+
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "A"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "V"), paired = T)
+
+ggplot(subset(group_diffdetect_part), aes(x=(part), y=hits, col =modality, fill = factor(modality),group = 0)) + geom_point( size = 2,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") # method = "lm"
+#+ geom_violin(fill = NA, col = "black")
+
+```
+
+group_detect_part <- oddball %>% filter(block == 1) %>% 
+  group_by( subject,mod_switch, modality,leading) %>% 
+  summarise(hits = mean(detected, na.rm=TRUE))
+
+group_diffdetect_part <- subset(group_detect_part, leading == "Trailing")
+group_diffdetect_part$hits <-group_diffdetect_part$hits -  subset(group_detect_part, leading == "Leading")$hits
+
+ggplot(subset(oddball), aes(x=(onset), y=detected, col =leading, fill = factor(leading))) + geom_point( size = 0.2,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") 
+
+ggplot(subset(oddball, detected == TRUE), aes(x=(onset), y=rt, col =leading, fill = factor(leading))) + geom_point(size = 0.2,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") 
+
+
+t.test(subset(group_diffdetect_part, mod_switch == "switch" & modality == "V")$hits,  mu = 0)
+t.test(subset(group_diffdetect_part, mod_switch == "switch" & modality == "A")$hits,  mu = 0)
+
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V")$hits,  mu = 0)
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A")$hits,  mu = 0)
+
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V" & part == 3)$hits,  mu = 0.0)
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A" & part == 3)$hits,  mu = 0.0)
+t.test(subset(group_diffdetect_part, mod_switch == "switch" & modality == "V" & part == 1)$hits,  mu = 0.0)
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A" & part == 1)$hits,  mu = 0.0)
+
+
+group_detect_block<- group_diffdetect_part %>% 
+  group_by( subject, modality, mod_switch, leading, block) %>% 
+  summarise(hits = mean(detected, na.rm=TRUE))
+
+
+fdata <- droplevels(group_detect_block)
+freq_data <- as.data.frame(xtabs(~ subject+modality+block+mod_switch+leading, data = fdata))
+subset(freq_data, Freq == 0 ) # subjects out of the analyses 4 7 19 32 35 43 45
+repetitions <-  subset(freq_data, Freq != 0 ) # subjects out of the analyses 4 7 19 32 35 43 45
+mean(repetitions$Freq)
+sd(repetitions$Freq)
+
+
+ezANOVA(subset(group_diffdetect_part, mod_switch == "noswitch"), dv=.(hits), wid = .(subject), within = .(part, modality))
+
+t.test(subset(group_diffdetect_part, mod_switch == "switch" & modality == "V" & part == 0)$hits,  mu = 0)
+
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V" & part == 0)$hits,  mu = 0.0)
+
+
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch"  )$hits,  mu = 0)
+
+t.test(subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V" )$hits,  mu = 0.0)
+
+group_detect_part_rt 
+
+```{r}
+group_detect_part_rt <- oddball %>% filter(detected == 1) %>% 
+  group_by( subject, modality, mod_switch, leading, part) %>% 
+  summarise(rt = median(rt))
+
+group_diffdetect_part_rt <- subset(group_detect_part_rt, leading == "Trailing")
+group_diffdetect_part_rt$rt <-group_diffdetect_part_rt$rt -  subset(group_detect_part_rt, leading == "Leading")$rt
+#group_diffdetect_part$rt <-group_diffdetect_part$rt -  subset(group_detect_part, leading == "Leading")$rt
+
+group_diffdetect_part_rt$part <- factor(group_diffdetect_part_rt$part)
+ezANOVA(group_diffdetect_part_rt, dv=.(rt), wid = .(subject), within = .(part, mod_switch, modality))
+
+
+
+
+ggplot(subset(group_diffdetect_part_rt), aes(x=(as.numeric(part)), y=rt, col =modality, fill = factor(modality))) + geom_point( size = 2,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0) +
+  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm")
+
+t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A"), paired = T)
+t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V"), paired = T)
+t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "A"), paired = T)
+t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "V"), paired = T)
+
+```
+
+
+aggregate(dprime~Vfield+Mod, data = subset(xdata), len)
+
+freq_stim <- aggregate(as.integer(leading) ~ stimulus + mod_switch, data = oddball, mean ) 
+
+
+library(lme4)
+library(LMERConvenienceFunctions)
+library(lmerTest)
+
+fit <- lmer((1/rt) ~ as.numeric(onset) * mod_switch *   modality + (1 | subject)  , data=subset(oddball, detected == 1))
+summary(fit)
+fit1 <- lmer((1/rt) ~ as.numeric(onset) * mod_switch * leading * modality + (1 | subject)  , data=subset(oddball, detected == 1))
+summary(fit1)
+
+anova(fit,fit1)
+
+
+
+
+
+scaled_oddball <- oddball
+scaled_oddball$onset <- scale(scaled_oddball$onset)
+
+
+fith <- lmer((detected) ~ as.numeric(onset) * mod_switch *   modality + (1 | subject)  , data=subset(scaled_oddball))
+summary(fith)
+fith1 <- lmer((detected) ~ as.numeric(onset) * mod_switch * leading * modality + (1 | subject)  , data=subset(scaled_oddball))
+summary(fith1)
+
+anova(fith,fith1)
+
+ggplot(subset(oddball), aes(x=(as.numeric(onset)), y=detected, col =leading, fill = factor(leading))) + geom_point( size = 0.02) + geom_abline(intercept = 0, slope = 0) +
+  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm")
+  
+fithAns <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject)+ (1 |stimulus) ,family = binomial(link = "logit") , data=subset(scaled_oddball, modality == "A" & mod_switch =="noswitch"))
+summary(fithAns)
+
+fithAs <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject) + (1 |stimulus),family = binomial(link = "logit")  , data=subset(scaled_oddball, modality == "A" & mod_switch =="switch"))
+summary(fithAs)
+
+fithVns <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit") , data=subset(scaled_oddball, modality == "V" & mod_switch =="noswitch"))
+summary(fithVns)
+
+fithVs <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject)+(1 |stimulus) ,family = binomial(link = "logit")  , data=subset(scaled_oddball, modality == "V" & mod_switch =="switch"))
+summary(fithVs)
+
+
+
+fitAnS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "A" & mod_switch == "noswitch"))
+
+summary(fitAnS)
+
+fitAS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "A" & mod_switch == "switch"))
+summary(fitAS)
+
+
+fitVnS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "V" & mod_switch == "noswitch"))
+
+summary(fitVnS)
+
+fitVS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "V" & mod_switch == "switch"))
+summary(fitVS)
+
+
+
+ggplot(subset(oddball, detected == 1), aes(x=(as.numeric(onset)), y=1/rt, col =leading, fill = factor(leading))) + geom_point( size = 0.002) + geom_abline(intercept = 0, slope = 0) +
+  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + ylim(c(1, 3))
+  
+  
+  
+  
+fith1 <- lmer((detected) ~ as.numeric(onset) * mod_switch * leading * modality + (1 | subject)  , data=subset(oddball))
+summary(fith1)
+
+anova(fith,fith1)
+
+
+fit1b <- lmer((rt) ~ mod_switch *  modality + (1 |subject) +  (1 |stimulus) , data=subset(oddball, detected == TRUE))
+
+
+group_diffdetect_part_rt$part <- as.numeric(group_diffdetect_part_rt$part)
+fit <- lmer((rt) ~ mod_switch * modality * part + (1 |subject) , data=subset(group_diffdetect_part_rt))
+
+summary(fit)
+anova(fit)
+anova(fit1, fit1b)
+
+fit <- lmer((rt) ~ mod_switch * modality * part + (1 |subject) , data=subset(group_diffdetect_part_rt))
+
+summary(fit)
+anova(fit)
+anova(fit1, fit1b)
+
+fitAnS <- lmer((rt) ~ part + (1 |subject) , data=subset(group_diffdetect_part_rt, modality == "A" & mod_switch == "noswitch"))
+
+summary(fitAnS)
+
+fitAS <- lmer((rt) ~ part + (1 + part|subject) , data=subset(group_diffdetect_part_rt, modality == "A" & mod_switch == "switch"))
+
+summary(fitAS)
+
+```{r}
+
+block_recall_rt <-  oddball %>% filter(detected == TRUE) %>% mutate(rt = (rt)) %>% 
+  group_by( subject, block) %>%  
+  summarise(mu = median(rt))
+
+block_recall$block <- factor(block_recall$block)
+
+ezANOVA(block_recall_rt, dv=.(mu), wid = .(subject), within = .(block))
+
+```
+
+Prepare bootstrapping RT function as suggested by Guillaume A. Rousselet1 and Rand R. Wilcox 2018
+
+```{r}
+
+nonbiased_RTmedian <- function(data, niter) {
+  mu <- replicate(niter,sample(data$rt,length(data$rt),replace = TRUE))
+  mu <- mean(apply(mu, 2, median))
+  mu <- 2*median(data$rt) - mu
+  mu <-as.data.frame(mu)
+  mu
+}
+```
+
+Analysis of RT and plots
+
+
+
+```{r}
+
+niter <- 300
+group_recall_rt <-  oddball %>% filter(detected == TRUE) %>% mutate(rt = (1/rt)) %>% 
+  group_by( subject, leading, modality, mod_switch) %>%  
+  summarise(mu = mean(rt), nobs = sum(detected)) 
+mean(group_recall_rt$nobs)
+
+
+#group_recall_rt <- oddball %>% filter(detected == TRUE) %>% mutate(rt = (rt)) %>% 
+#  group_by( subject, leading, modality, mod_switch) %>% 
+#  do(nonbiased_RTmedian(.,niter))
+
+#ezANOVA(group_recall_rt, dv=.(nobs), wid = .(subject), within = .(mod_switch, leading, modality))
+ezANOVA(group_recall_rt, dv=.(mu), wid = .(subject), within = .(mod_switch, leading, modality))
+
+
+
+ggplot(subset(group_recall_rt), aes(x=(modality), y=mu, col = modality, fill = factor(modality))) + 
+  scale_color_manual( values =  c("red","green")) + geom_boxplot(fill = NA, alpha = 0.6) + scale_fill_manual( values =  c("red","green")) + geom_point( size = 2,  position = position_jitter(w = 0.1, h = 0))+  theme_bw(20) + theme(axis.text=element_text(size=16), axis.title=element_text(size=14),axis.line = element_line(colour = "black"),panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_blank(),panel.background = element_blank())
+
+ggplot(subset(group_recall_rt), aes(x=(mod_switch ), y=mu, col =leading, fill = factor(leading))) + 
+  scale_color_manual( values =  c("blue","orange")) + geom_boxplot(fill = NA, alpha = 0.6) + scale_fill_manual( values =  c("blue","orange")) + geom_point( size = 2,  position = position_jitter(w = 0.1, h = 0))  +  theme_bw(20) + theme(axis.text=element_text(size=16), axis.title=element_text(size=14),axis.line = element_line(colour = "black"),panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_blank(),panel.background = element_blank())
+
+ggplot(subset(group_recall_rt), aes(x=(mod_switch), y=mu, col = modality, fill = factor(modality))) + 
+  scale_color_manual( values =  c("red","green")) + geom_boxplot(fill = NA, alpha = 0.6) + scale_fill_manual( values =  c("red","green")) + geom_point( size = 2,  position = position_jitter(w = 0.1, h = 0))  +  theme_bw(20) + theme(axis.text=element_text(size=16), axis.title=element_text(size=14),axis.line = element_line(colour = "black"),panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_blank(),panel.background = element_blank())
+                                                                                                                                                                                                                                        
+ggplot(subset(group_recall_rt), aes(x=(leading), y=mu, col = leading, fill = factor(leading))) + 
+  scale_color_manual( values =  c("blue","orange")) + geom_boxplot(fill = NA, alpha = 0.6) + scale_fill_manual( values =  c("blue","orange")) + geom_point( size = 2,  position = position_jitter(w = 0.1, h = 0)) + facet_grid(modality~mod_switch) +  theme_bw(20)  + theme(axis.text=element_text(size=16), axis.title=element_text(size=14),axis.line = element_line(colour = "black"),panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_blank(),panel.background = element_blank())
+
+ttest_recall_rt <-  oddball %>% filter(detected == TRUE) %>% mutate(rt = (rt)) %>% 
+  group_by( subject, leading, mod_switch) %>%  
+  summarise(mu = median(rt))
+
+t.test(mu ~ leading, data = subset(ttest_recall_rt, mod_switch == "noswitch"),  paired = TRUE)
+t.test(mu ~ leading, data = subset(ttest_recall_rt, mod_switch == "switch"),  paired = TRUE)
+
+
+```
+
+
+ttest_recall_rt <-  oddball %>% filter(detected == TRUE) %>% mutate(rt = 1/(rt)) %>% 
+  group_by( subject, leading, mod_switch,modality) %>%  
+  summarise(mu = mean(rt))
+  
+t.test(mu ~ leading, data = subset(ttest_recall_rt, mod_switch == "noswitch"),  paired = TRUE)
+t.test(mu ~ leading, data = subset(ttest_recall_rt, mod_switch == "switch"),  paired = TRUE)
+
+
+
+t.test(mu ~ leading, data = subset(ttest_recall_rt, mod_switch == "noswitch" & modality == "A"),  paired = TRUE)
+t.test(mu ~ leading, data = subset(group_recall_rt, mod_switch == "switch"& modality == "A"),  paired = TRUE)
+
+
+
+
+
+dim(x_v)
+
+ezANOVA(group_recall_rt, dv=.(nobs), wid = .(subject), within = .(mod_switch, leading, modality))
+
+library(lme4)
+library(LMERConvenienceFunctions)
+library(lmerTest)
+
+fit <- lmer((rt) ~ mod_switch * modality + (1 |subject) +  (1 |stimulus) , data=subset(oddball, detected == TRUE))
+fit1 <- lmer((rt) ~ mod_switch * leading * modality + (1 |subject) +  (1 |stimulus) , data=subset(oddball, detected == TRUE))
+fit1b <- lmer((rt) ~ leading + mod_switch *  modality + (1 |subject) +  (1 |stimulus) , data=subset(oddball, detected == TRUE))
+
+anova(fit1, fit1b)
+fit2 <- lmer((rt) ~ mod_switch  + (1 |subject) +  (1 |stimulus) , data=subset(oddball, detected == TRUE))
+
+
+summary(fit)
+summary(fit1)
+anova(fit, fit1)
+anova(fit, fit2)
+anova(fit1)
+
+
+```{r}
+test <- read_csv('/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/test_results.csv',col_types = cols())
+
+test$modality = factor(test$modality, labels=c("AA","VV","AV","VA"))
+test$modality <- factor(test$modality,levels(test$modality)[c(2,1,4,3)])
+#test$trial_type = factor(test$trial_type, labels=c("Normal", "Inverted"))
+test$multimodal = factor(test$multimodal, labels=c("Unimodal", "Multimodal"))
+test$leading_modality = factor(test$leading_modality, labels=c("Visual", "Auditory"))
+test$subject = factor(test$subject)
+test$rkg_f = factor(test$rkg, labels=c("Remember","Know","Guess"))
+test$when = cut(test$order,3, labels=c("Start","Middle","End"))
+test$answer = factor(test$answer, labels=c("First","Second"))
+test$trial_id = factor(test$trial_id)
+std_pair_id = factor(test$std_pair_id)
+
+avg_data_subj <- aggregate(cbind(correct)~multimodal+modality+subject , data = subset(test), mean)
+t.test(subset(test, modality == "AA")$correct, mu = 0.5)
+avg_data <- aggregate(cbind(correct)~multimodal+modality , data = subset(test), mean)
+print(avg_data)
+```
+
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+
+Por ahora los resultados parecen indicar que la gente solo aprende los auditivos, tan unimodales como multimodales, esto se manifiesta de forma implicita en RTs. Aunque solo aprenden de forma explicita los auditivos
+
+
+```
+
+
+
+merge dataframes using tidyverse (dplyer)
+gather, keys, joins
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+plt.plot([1, 2, 3, 4])
+plt.ylabel('some numbers')
+plt.show()
+
+```
+
+
+

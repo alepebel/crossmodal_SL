@@ -1,0 +1,1281 @@
+---
+  title: "Exposure_analysis with all trials: Experimento 2, bloqueando modalidades por bloques"
+author: "Alexis Perez-Bellido & Daniel Duato"
+date: "5/22/2019"
+output:
+  pdf_document: default
+html_document: default
+---
+  
+  
+```{r}
+root <- "/Users/alex/OneDrive - Universitat de Barcelona"
+```
+
+  ## R Markdown
+  Loading packages and setting paths
+
+```{r, echo = FALSE}
+library(readr)
+library(ez)
+library(retimes)
+library(lemon)
+library(lmerTest)
+library(LMERConvenienceFunctions)
+library(BayesFactor)
+library(svglite)
+library(tidyverse)
+setwd(paste(root,'/PROJECTS/MS_Statistical_learning/R/Exp_2', sep=""))
+```
+
+```{r, echo = FALSE}
+# this functions is used to zscore the data
+
+mytheme <- theme(axis.text=element_text(size=16), axis.title=element_text(size=14),axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+```
+
+
+# Analysing exposure Implicit task
+Reading exposure data and properly code the variables
+```{r}
+xdata <- read_csv(paste(root,'/PROJECTS/MS_Statistical_learning/Behavioral/Exp_2/csv/exposure_all.csv', sep=""),col_types = cols())
+
+
+xdata$subject = factor(xdata$subject, ordered=TRUE)
+xdata$modality = factor(xdata$modality,labels=c("V","A"))
+xdata$leading = factor(xdata$leading,labels=c("Leading","Trailing"))
+xdata$pair_modality = factor(xdata$pair_modality, labels=c("AA","VV","AV","VA"))
+xdata$next_mod = factor(xdata$next_mod,labels=c("V","A")) #the modality of the following stimulus (probably not useful)
+xdata$modal_comb <- "multisensory" #Create variable. Conditions recoded into multimodal/unimodal
+xdata$modal_comb[xdata$pair_modality == "AA" | xdata$pair_modality == "VV"] <- "unisensory"
+xdata$stimulus = factor(xdata$stimulus)
+xdata$pair = factor(xdata$pair)
+xdata$mod_switch = factor(xdata$mod_switch, labels = c("Unimodal", "Crossmodal"))
+xdata$detected = as.integer(xdata$detected)
+# creating a variable to subdivide the experiment in 4 parts (of 2 blocks each)
+xdata$part <- 1
+#xdata$part[xdata$block > 2] <- 2
+#xdata$part[xdata$block > 4] <- 3
+xdata$part[xdata$block > 4] <- 2
+head(xdata)
+```
+
+Looking at the impact of stimulus type on detection
+```{r}
+
+oddball <- subset(xdata, oddball == 1)
+oddball$irt <- 1/oddball$rt
+# Scale
+scaled_oddball <- oddball
+scaled_oddball$onset <- scale(scaled_oddball$onset) # lets re-scale the onset times to match the 0-1
+                              
+                              
+stim_detec <- oddball %>% group_by(stimulus) %>% mutate(hits = mean(detected))
+
+ggplot(subset(oddball), aes(x=as.numeric(stimulus), y=as.numeric(detected), col = modality)) + 
+ # scale_color_manual( values =  c("blue","orange"))+ scale_fill_manual( values =  c("blue","orange")) + 
+  geom_point( data = stim_detec, aes(x = stimulus, y = hits), col = "black" ) + geom_smooth() + ylab("P(Hits)") + xlab("stim ID") + 
+  theme_bw(20) + mytheme + ggtitle("Stimulus detection") + ylim(c(0.0, 1)) + theme(axis.text = element_text(size = 12),element_line(size = 0.3))    #ggsave("/Users/alex/Dropbox/Projects/MS_Statistical_learning/Doc/MSLmanuscript/figures_results/exp2_stim.svg", width=8, height=4) 
+
+
+```
+
+
+See hits per participant
+```{r}
+subj_detec <- oddball %>% group_by(subject) %>% summarise(hits = mean(detected), rts = mean(rt))
+
+ggplot(subset(subj_detec), aes(x=(subject), y=hits)) + 
+geom_point() + ylab("hits") + xlab("subj ID") + theme_bw(20) + mytheme +  ylim(c(0.0, 1.))
+
+subj_rtdetec <- oddball %>% filter(detected == 1) %>% group_by(subject) %>%  summarise(rts = mean(rt)) 
+
+ggplot(subset(subj_rtdetec), aes(x=(subject), y=rts)) + 
+geom_point() + ylab("Rts") + xlab("subj ID") + theme_bw(20) + mytheme 
+
+```
+
+```{r}
+
+stim_gaps <- oddball %>% group_by(block, leading) %>% summarise(gap = mean(gap))
+stim_gaps 
+
+ggplot(subset(xdata), aes(x=(as.numeric(onset)), y=oddball, col = factor(block))) + geom_point(alpha = 0.5, size = 0.002)  + theme_bw(20) + mytheme 
+```
+```{r}
+type_blocks <- oddball  %>% group_by(block,pair_modality) %>% summarise(tblock = length(subject))
+ 
+ggplot(type_blocks, aes(x=(as.numeric(block)), y=tblock, col = pair_modality)) + geom_point(alpha = 0.5, size = 3)  + theme_bw(20) + mytheme
+
+```
+
+Propotion of erroneous 300 ms gaps per condition (they have to be 250ms)
+```{r eval=FALSE, include=FALSE}
+stim_gaps <- oddball %>% group_by(modality, mod_switch, leading) %>% summarise(gap = mean(gap))
+stim_gaps 
+
+ggplot(subset(xdata), aes(x=(as.numeric(onset)), y=oddball, col = factor(block))) + geom_point(alpha = 0.5, size = 0.002)  + theme_bw(20) + mytheme 
+```
+
+```{r}
+
+avg_hits_xmod <- subset(oddball) %>% group_by(mod_switch, modality,leading, subject)  %>% summarise(correct= mean(detected))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_hits_xmod ), aes(x=factor(leading), y=correct, col = factor(leading), fill = factor(leading))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(15) + ylab("1/RT") + xlab("Position") + mytheme + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + 
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)   + mytheme +   scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + facet_grid(modality~mod_switch) 
+```
+
+
+
+```{r}
+
+stim_detec_leading <- oddball %>% group_by(subject, modality, mod_switch ) %>%  summarise(hits = mean(detected), irts = mean(irt[detected == 1]))
+
+              
+hit_SE_data <- Rmisc::summarySEwithin(stim_detec_leading, measurevar="hits", withinvars=c("modality","mod_switch"), idvar="subject") 
+rt_SE_data <- Rmisc::summarySEwithin(stim_detec_leading, measurevar="irts", withinvars=c("modality","mod_switch"), idvar="subject") 
+
+
+ggplot(subset(stim_detec_leading), aes(x=mod_switch, y=hits, color = mod_switch)) + 
+  facet_rep_grid(.~modality) + geom_line(data=stim_detec_leading,aes(mod_switch,hits,group = subject), alpha = 0.5, col = "darkgrey", size = 0.3) +  theme_bw(20) + ylab("P(Hits)") + xlab("Modality") +  mytheme +  scale_color_manual( values =  c("orange","darkgreen")) + scale_fill_manual( values =  c("orange","darkgreen")) +  geom_point( size = 2, alpha = 0.5, position = position_jitter(w = 0.25, h = 0)) + theme(axis.text = element_text(size = 12),element_line(size = 0.3))+  geom_errorbar(data = hit_SE_data, aes(ymax =  hits+se, ymin= hits-se), col = 'black',  width=0.5,size=0.3) +
+ scale_y_continuous(limits=c(0.4,1.1), breaks = c(0.5, 0.75, 1)) 
+
+#ggsave("/Users/alex/Dropbox/Projects/MS_Statistical_learning/Doc/MSLmanuscript/figures_results/exp2_hits.svg", width=8, height=5) 
+
+ggplot(subset(stim_detec_leading), aes(x=factor(leading), y=irts, fill = factor(leading), col = factor(leading))) + 
+  geom_line(data=stim_detec_leading,aes(leading,irts,group = subject), alpha = 0.5, col = "darkgrey", size = 0.3) + 
+  facet_rep_grid(modality~mod_switch) + theme_bw(20) + ylab("1/RT") + xlab("Modality") +  mytheme +
+  scale_color_manual( values =  c("orange","darkgreen")) + scale_fill_manual( values =  c("orange","darkgreen")) +
+  geom_point(  size = 2, alpha = 0.5, position = position_jitter(w = 0.25, h = 0)) + #
+  geom_errorbar(data = rt_SE_data, aes(ymax =  irts+se, ymin= irts-se), col = 'black', width=0.5,size=0.3) + theme(axis.text = element_text(size = 12),element_line(size = 0.3))    + ylab("1/RT (s)") + scale_y_continuous(limits=c(1.2,3), breaks = c(1.5, 2, 2.5, 3))  
+```
+
+```{r}
+
+stim_detec_leading <- oddball %>% group_by(subject, modality, mod_switch, leading ) %>%  summarise(hits = mean(detected), irts = mean(irt[detected == 1]))
+
+              
+hit_SE_data <- Rmisc::summarySEwithin(stim_detec_leading, measurevar="hits", withinvars=c("modality","mod_switch", "leading"), idvar="subject") 
+rt_SE_data <- Rmisc::summarySEwithin(stim_detec_leading, measurevar="irts", withinvars=c("modality","mod_switch", "leading"), idvar="subject") 
+
+
+ggplot(subset(stim_detec_leading), aes(x=factor(leading), y=hits, col = factor(leading))) + 
+  facet_rep_grid(modality~mod_switch) + geom_line(data=stim_detec_leading,aes(leading,hits,group = subject), alpha = 0.5, col = "darkgrey", size = 0.3) +  theme_bw(20) + ylab("P(Hits)") + xlab("Modality") +  mytheme +  scale_color_manual( values =  c("orange","darkgreen")) + scale_fill_manual( values =  c("orange","darkgreen")) +  geom_point( size = 2, alpha = 0.5, position = position_jitter(w = 0.25, h = 0)) + theme(axis.text = element_text(size = 12),element_line(size = 0.3))+  geom_errorbar(data = hit_SE_data, aes(ymax =  hits+se, ymin= hits-se), col = 'black',  width=0.5,size=0.3) +
+ scale_y_continuous(limits=c(0.4,1.1), breaks = c(0.5, 0.75, 1)) 
+
+#ggsave("/Users/alex/Dropbox/Projects/MS_Statistical_learning/Doc/MSLmanuscript/figures_results/exp2_hits.svg", width=8, height=5) 
+
+ggplot(subset(stim_detec_leading), aes(x=factor(leading), y=irts, fill = factor(leading), col = factor(leading))) + 
+  geom_line(data=stim_detec_leading,aes(leading,irts,group = subject), alpha = 0.5, col = "darkgrey", size = 0.3) + 
+  facet_rep_grid(modality~mod_switch) + theme_bw(20) + ylab("1/RT") + xlab("Modality") +  mytheme +
+  scale_color_manual( values =  c("orange","darkgreen")) + scale_fill_manual( values =  c("orange","darkgreen")) +
+  geom_point(  size = 2, alpha = 0.5, position = position_jitter(w = 0.25, h = 0)) + #
+  geom_errorbar(data = rt_SE_data, aes(ymax =  irts+se, ymin= irts-se), col = 'black', width=0.5,size=0.3) + theme(axis.text = element_text(size = 12),element_line(size = 0.3))    + ylab("1/RT (s)") + scale_y_continuous(limits=c(1.2,3), breaks = c(1.5, 2, 2.5, 3))  
+
+#ggsave("/Users/alex/Dropbox/Projects/MS_Statistical_learning/Doc/MSLmanuscript/figures_results/exp2_rts.svg", width=8, height=5) 
+```
+
+# Creating some bins to plot the data
+```{r}
+oddball <-  oddball %>% group_by(subject,pair_modality ) %>%  mutate(bin = ntile(onset, 10))
+
+stim_detec_bins <- oddball %>% group_by( modality, mod_switch, leading, bin ) %>%  summarise(hits = mean(detected), irts = mean(irt[detected == 1]))
+```
+
+
+
+Linear mixed models
+Reescaling independent variable
+```{r}
+# Scale
+scaled_oddball <- oddball
+scaled_oddball$onset <- scale(scaled_oddball$onset) # lets re-scale the onset times to match the 0-1
+
+```
+
+Hits analyses
+Can people learn visual contigencies
+
+```{r}
+hits.m0 <- glmer((detected) ~  (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball))
+
+hits.m1a <- glmer((detected) ~   mod_switch + (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball))
+
+hits.m1b <- glmer((detected) ~   modality +  (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball))
+
+anova(hits.m0,hits.m1a)
+anova(hits.m0,hits.m1b)
+
+hits.m2 <- glmer((detected) ~   mod_switch + modality +  (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball))
+
+anova(hits.m1b,hits.m2)
+
+hits.m3 <- glmer((detected) ~   mod_switch * modality +  (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball))
+
+anova(hits.m2,hits.m3)
+
+summary(hits.m3)
+
+```
+
+
+
+```{r}
+hits.VV1 <- glmer(detected ~   (1 | subject) + (1 |stimulus),family = binomial(link = "logit")  , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball,  modality == "V" & mod_switch == "Unimodal"))
+hits.VV2 <- glmer(detected ~  leading     + (1 | subject) + (1 |stimulus),family = binomial(link = "logit")  , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball,  modality == "V" & mod_switch == "Unimodal"))
+anova(hits.VV1,hits.VV2)
+summary(hits.VV)
+
+hits.AA1 <- glmer(detected ~   (1  | subject) + (1 |stimulus),family = binomial(link = "logit")  , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball,  modality == "A" & mod_switch == "Unimodal"))
+hits.AA2 <- glmer(detected ~  leading    + (1  | subject) + (1 |stimulus),family = binomial(link = "logit")  , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball,  modality == "A" & mod_switch == "Unimodal"))
+anova(hits.AA1,hits.AA2)
+summary(hits.AA)
+
+
+hits.VA1 <- glmer(detected ~   (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball,  modality == "A" & mod_switch == "Crossmodal"))
+hits.VA2 <- glmer(detected ~  leading     + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit") , control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball,  modality == "A" & mod_switch == "Crossmodal"))
+anova(hits.VA1,hits.VA2)
+summary(hits.VA)
+
+hits.AV1 <- glmer(detected ~   (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit"),  control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, modality == "V" & mod_switch == "Crossmodal"))
+hits.AV2 <- glmer(detected ~  leading     + (1  | subject) + (1 |stimulus) ,family = binomial(link = "logit"),  control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, modality == "V" & mod_switch == "Crossmodal"))
+anova(hits.AV1,hits.AV2)
+summary(hits.AV1)
+
+```
+
+
+Implicit visual learning based on RT?
+```{r}
+
+rt.m <- lmer(irt ~   (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1))
+
+rt.m0 <- lmer(irt ~   modality   + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1))
+
+rt.m0b <- lmer(irt ~   mod_switch   + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1))
+
+anova(rt.m,rt.m0)
+anova(rt.m,rt.m0b)
+
+rt.m1 <- lmer(irt ~  mod_switch + modality + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1))
+
+anova(rt.m,rt.m0,rt.m0b,rt.m1)
+
+rt.m2 <- lmer(irt ~  mod_switch * modality    + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1))
+
+anova(rt.m1, rt.m2)
+
+summary(rt.m2)
+
+```
+
+
+
+```{r}
+
+rt.VV1 <- lmer(irt ~    (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" & mod_switch == "Unimodal"))
+
+rt.VV2 <- lmer(irt ~  leading + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" & mod_switch == "Unimodal"))
+
+anova(rt.VV1,rt.VV2)
+
+summary(rt.VV2)
+
+
+rt.AA1 <- lmer(irt ~   (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" & mod_switch == "Unimodal"))
+
+rt.AA2 <- lmer(irt ~  leading    + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" & mod_switch == "Unimodal"))
+
+anova(rt.AA1, rt.AA2)
+
+summary(rt.AA2)
+
+rt.VA1 <- lmer(irt ~    (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" & mod_switch == "Crossmodal"))
+
+rt.VA2 <- lmer(irt ~  leading    + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" & mod_switch == "Crossmodal"))
+summary(rt.VA2)
+
+anova(rt.VA1,rt.VA2)
+
+rt.AV1 <- lmer(irt ~   (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" & mod_switch == "Crossmodal"))
+
+rt.AV2 <- lmer(irt ~  leading     + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" & mod_switch == "Crossmodal"))
+anova(rt.AV1,rt.AV2)
+summary(rt.AV2)
+```
+
+
+
+Assesuing evidence for learning using bayesian statistics
+```{r}
+
+rt.bayesAS0 <- lmBF( irt ~ subject  + stimulus, data = subset(scaled_oddball, modality == "A" & mod_switch =='switch' & detected == 1)  , whichRandom = c("stimulus", "subject"))
+rt.bayesAS1 <- lmBF( irt ~  leading + subject  + stimulus, data = subset(scaled_oddball, modality == "A" & mod_switch =='switch' & detected == 1)  , whichRandom = c("stimulus", "subject"))
+
+rt.bayesAS1/rt.bayesAS0
+
+```
+
+```{r}
+
+rt.NSA0 <- lmer(irt ~  (1 | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" &  mod_switch == "noswitch"))
+
+rt.NSA1 <- lmer(irt ~  leading   + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" &  mod_switch == "noswitch"))
+
+anova(rt.NSA0, rt.NSA1)
+```
+
+
+```{r}
+
+rt.SA0 <- lmer(irt ~  (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" &  mod_switch == "switch"))
+
+rt.SA1 <- lmer(irt ~ leading   + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "A" &  mod_switch == "switch"))
+
+summary(rt.SA1)
+anova(rt.SA0, rt.SA1)
+```
+
+```{r}
+
+rt.NSV0 <- lmer(irt ~ (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" &  mod_switch == "noswitch"))
+
+rt.NSV1 <- lmer(irt ~  leading   + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" &  mod_switch == "noswitch"))
+
+anova(rt.NSV0, rt.NSV1)
+```
+No implicit learning Crossmodal AV
+```{r}
+
+rt.SV0 <- lmer(irt ~ (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" &  mod_switch == "switch"))
+
+rt.SV1 <- lmer(irt ~ leading   + (1  | subject) + (1 |stimulus)  , control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)) , data=subset(scaled_oddball, detected == 1 & modality == "V" &  mod_switch == "switch"))
+summary(rt.SV1)
+anova(rt.SV0, rt.SV1)
+```
+
+
+# Analysing Explicit task
+
+Loading explicit test data
+```{r}
+
+
+test <- read_csv('/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_2/csv/test_results.csv',col_types = cols())
+
+test$modality = factor(test$modality, labels=c("AA","VV","AV","VA"))
+test$modality <- factor(test$modality,levels(test$modality)[c(2,1,4,3)])
+#test$trial_type = factor(test$trial_type, labels=c("Normal", "Inverted"))
+test$multimodal = factor(test$multimodal, labels=c("Unimodal", "Multimodal"))
+test$leading_modality = factor(test$leading_modality, labels=c("Visual", "Auditory"))
+test$subject = factor(test$subject)
+test$rkg_f = factor(test$rkg, labels=c("Remember","Know","Guess"))
+test$when = cut(test$order,3, labels=c("Start","Middle","End"))
+test$answer = factor(test$answer, labels=c("First","Second"))
+test$trial_id = factor(test$trial_id)
+std_pair_id = factor(test$std_pair_id)
+
+```
+
+
+
+```{r}
+
+
+avg_test_xmod <- test %>% group_by(multimodal, modality, subject)  %>% summarise(correct= mean(correct))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_test_xmod ), aes(x=factor(modality), y=correct, col = factor(modality), fill = factor(modality))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(20) + ylab("Accuracy") + xlab("Modality") + mytheme +
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)  + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0)
+
+
+
+```
+
+
+
+
+```{r}
+
+avg_test_xmod <- test %>% group_by(multimodal, modality, subject)  %>% summarise(correct= mean(correct))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_test_xmod ), aes(x=factor(modality), y=correct, col = factor(modality), fill = factor(modality))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(20) + ylab("Accuracy") + xlab("Modality") + mytheme +
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)  + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0)
+
+
+# logistic regression comparing intercepts is more appropiated
+test$modality <-relevel(test$modality,"VV")
+fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchance )
+
+
+# Converting the predicted value from log odds into percentage using the formula below
+# exp(0.32152) / (1+exp(0.32152) )  # to get the intercept probabilities
+
+
+test$modality <-relevel(test$modality,"AA")
+fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchance )
+# 
+# test$modality <-relevel(test$modality,"AV")
+# fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+# summary(fitchance )
+# 
+# 
+# test$modality <-relevel(test$modality,"VV")
+# fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+# summary(fitchance )
+```
+
+t.test(subset(avg_test_xmod, modality == "VV")$correct, mu = 0.5)
+
+```{r}
+
+
+avg_test_xmodxrkg <- test %>% group_by(multimodal, modality, rkg,  subject)  %>% summarise(correct= mean(correct))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_test_xmodxrkg), aes(x=factor(rkg), y=correct, col = factor(modality), fill = factor(modality))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(20) + ylab("Accuracy") + xlab("Modality") + mytheme + facet_grid(multimodal~modality) +
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)  + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0)
+
+
+
+```
+
+
+```{r}
+fitmulti <- glmer(correct ~ modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Multimodal"))
+summary(fitmulti)
+
+
+fituni <- glmer(correct ~ modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Unimodal"))
+summary(fituni)
+
+```
+```{r}
+
+fituni <- glmer(correct ~  (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Unimodal"))
+summary(fituni)
+fituni1 <- glmer(correct ~ modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Unimodal"))
+summary(fituni1)
+anova(fituni, fituni1)
+
+```
+
+```{r}
+fit <- glmer(correct ~ multimodal + modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fit)
+
+
+```
+avg_data_subj <- aggregate(cbind(correct)~multimodal+modality+subject , data = subset(test), mean)
+t.test(subset(test, modality == "AA")$correct, mu = 0.5)
+
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality , data = subset(test), mean)
+print(avg_data)
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality+rkg , data = subset(test), length)
+print(avg_data)
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+
+
+
+```{r}
+fitnomultinolead <- glmer(correct ~ rkg_f  + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitnomultinolead)
+```
+
+
+
+
+```{r}
+
+# fitchancerkg <- glmer(correct ~ modality + rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+# summary(fitchancerkg)
+# anova(fitchancerkg)
+fitnomultinolead <- glmer(correct ~ rkg_f  + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitnomultinolead)
+
+fitmulti <- glmer(correct ~ rkg_f * multimodal + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitmulti)
+#anova(fitnomulti,fitmulti)
+
+fitleading <- glmer(correct ~ rkg_f *leading_modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+
+anova(fitnomultinolead, fitleading )
+# It seems that there is an effect of multisensory modality that interacts with ranking - know, and it is independent of the leading modality
+
+ggplot(subset(avg_test_xmodrkg ), aes(x=factor(rkg_f), y=correct, col = (nobs), fill = (nobs))) + geom_bar(stat="identity", position = "dodge") + facet_grid(.~modality) + mytheme + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0) + theme(axis.text.x = element_text(angle = 40, hjust = 1, size =10))
+
+# manually binomial tests per conditions
+
+binomial_tests <- test %>% group_by(multimodal, modality, leading_modality, rkg_f)  %>% summarise(nobs = length(correct), correct = length(correct[correct==1])) %>% rowwise() %>% mutate(pvalue = binom.test(correct, nobs, p = 0.5, alternative = c("two.sided"), conf.level = 0.95)$p.value) 
+
+p.adjust(binomial_tests$pvalue, method = "hochberg")
+
+
+
+test$modality <-relevel(test$modality,"VV")
+test$rkg_f <-relevel(test$rkg_f,"Know")
+fitVVsimple <- glmer(correct ~ (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+
+fitVV <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+summary(fitVV)
+
+# comparing VV model with rankings
+anova(fitVVsimple,fitVV)
+
+
+test$modality <-relevel(test$modality,"VV")
+test$rkg_f <-relevel(test$rkg_f,"Remember")
+fitVV <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+summary(fitVV)
+
+
+test$modality <-relevel(test$modality,"AA")
+test$rkg_f <-relevel(test$rkg_f,"Know")
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+test$modality <-relevel(test$modality,"AA")
+test$rkg_f <-relevel(test$rkg_f,"Remember")
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+test$modality <-relevel(test$modality,"AA")
+test$rkg_f <-relevel(test$rkg_f,"Guess")
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+
+
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+fitVV <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+summary(fitVV)
+
+fitchanceXrkg <- glmer(correct ~ modality * rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchanceXrkg)
+
+
+
+
+```
+
+
+
+fitchancerkg <- glmer(correct ~ modality + rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchancerkg)
+anova(fitchancerkg)
+
+
+anova(fitchance,fitchancerkg)
+anova(fitchance,fitchanceXrkg)
+anova(fitchancerkg,fitchanceXrkg)
+
+
+avg_test_xmod <- 
+
+
+do(.)
+
+a = binom.test(77, 122, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+           0.05 / 12
+
+binom.test(124, 210, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+           0.05 / 12
+fitAA <- g
+(correct ~  (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA )
+
+inverselogit <- function(x){ exp(x) / (1+exp(x) ) }
+
+inverselogit( coef(fitAA)["(Intercept)"]
+
+
+
+```
+
+
+avg_data_subj <- aggregate(cbind(correct)~multimodal+modality+subject , data = subset(test), mean)
+t.test(subset(test, modality == "AA")$correct, mu = 0.5)
+avg_data <- aggregate(cbind(correct)~multimodal+modality , data = subset(test), mean)
+print(avg_data)
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality+rkg , data = subset(test), length)
+print(avg_data)
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+           
+           
+Por ahora los resultados parecen indicar que la gente solo aprende los auditivos, tan unimodales como multimodales, esto se manifiesta de forma implicita en RTs. Aunque solo aprenden de forma explicita los auditivos
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+subj_detec <- oddball %>% group_by(subject) %>% summarise(hits = mean(detected), rts = mean(rt))
+
+ggplot(subset(subj_detec), aes(x=(subject), y=hits)) + 
+geom_point() + ylab("hits") + xlab("subj ID") + theme_bw(20) + mytheme +  ylim(c(0.0, 1.))
+
+subj_rtdetec <- oddball %>% filter(detected == 1) %>% group_by(subject) %>%  summarise(rts = mean(rt)) 
+
+
+ggplot(subset(subj_rtdetec), aes(x=(subject), y=rts)) + 
+geom_point() + ylab("Rts") + xlab("subj ID") + theme_bw(20) + mytheme 
+
+```
+
+
+
+Propotion of erroneous 300 ms gaps per condition (they have to be 250ms)
+```{r}
+stim_gaps <- oddball %>% group_by(modality, mod_switch, leading) %>% summarise(gap = mean(gap))
+stim_gaps 
+```
+
+```{r}
+ggplot(subset(xdata), aes(x=(as.numeric(onset)), y=oddball, col = factor(block))) + geom_point(alpha = 0.5, size = 0.002)  + theme_bw(20) + mytheme 
+```
+```{r}
+ggplot(subset(xdata, subject == 21), aes(x=(as.numeric(onset)), y=oddball, col = factor(block))) + geom_point(alpha = 0.5, size = 0.002)  + theme_bw(20) + mytheme 
+```
+
+
+
+
+```{r}
+group_detect <- oddball %>% 
+  group_by( subject, modality, mod_switch,leading) %>% 
+  summarise(hits = mean(detected, na.rm=TRUE))
+
+ezANOVA(group_detect, dv=.(hits), wid = .(subject), within = .(leading, mod_switch, modality))
+
+ggplot(subset(group_detect), aes(x=(leading), y=hits, col =modality, fill = factor(modality),group = 0)) + geom_point( size = 0.5,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + xlab('Blocks') + ylab('Hits (trailing - leading')
+#+ geom_violin(fill = NA, col = "black")
+
+```
+```{r}
+fit <- glmer((detected) ~  mod_switch + leading +  modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball))
+
+fit <- glmer((detected) ~  mod_switch + leading+   modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball))
+
+fit1 <- glmer((detected) ~   leading +   modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball))
+
+fit1swt <- glmer((detected) ~   mod_switch + leading *   modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball))
+
+
+fit2 <- glmer((detected) ~   leading *   modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball))
+
+anova(fit, fit1)
+
+```
+```{r}
+
+fitv <- glmer((detected) ~  mod_switch + leading+ (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball,  modality  == "V"))
+summary(fitv)
+
+```
+```{r}
+fita <- glmer((detected) ~  mod_switch + leading+ (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball,  modality  == "A"))
+
+fita1 <- glmer((detected) ~  mod_switch * leading+ (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball,  modality  == "A"))
+
+summary(fita)
+
+anova(fita, fita1)
+
+```
+
+```{r}
+# There is variance explained by leading. Now unpacking the effects by condition 
+
+
+fit <- glmer((detected) ~  mod_switch * leading *   modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(oddball))
+
+summary(fit)
+```
+group_detect <- oddball %>% 
+  group_by( subject, modality, mod_switch,leading) %>% 
+  summarise(hits = mean(detected, na.rm=TRUE))
+
+
+
+```{r}
+
+group_detect_rt <- oddball %>% filter(detected == 1) %>% 
+  group_by( subject, modality, mod_switch,leading) %>% 
+  summarise(speedness = 1/mean(rt, na.rm=TRUE))
+
+ezANOVA(group_detect_rt, dv=.(speedness), wid = .(subject), within = .(leading, mod_switch, modality))
+
+ggplot(subset(group_detect_rt), aes(x=(leading), y=speedness, col =modality, fill = factor(modality),group = 0)) + geom_point( size = 0.5,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + xlab('Blocks') + ylab('RTs')
+#+ geom_violin(fill = NA, col = "black")
+
+```
+
+```{r}
+fita <- lmer((1/rt) ~  mod_switch + leading+ (1 | subject) + (1 |stimulus)    , data=subset(oddball,  detected == 1 & modality  == "A"))
+
+fita1 <- lmer((1/rt) ~  mod_switch * leading+ (1 | subject) + (1 |stimulus)  , data=subset(oddball,  detected == 1 & modality  == "A"))
+
+anova(fita,fita1)
+summary(fita)
+
+```
+
+
+```{r}
+fitv <- lmer((1/rt) ~  mod_switch + leading+ (1 | subject) + (1 |stimulus)    , data=subset(oddball,  detected == 1 & modality  == "V"))
+
+fitv1 <- lmer((1/rt) ~  mod_switch * leading+ (1 | subject) + (1 |stimulus)  , data=subset(oddball,  detected == 1 & modality  == "V"))
+
+summary(fitv)
+summary(fitv1)
+```
+
+
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "A"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "V"), paired = T)
+
+ggplot(subset(group_diffdetect_part), aes(x=(part), y=hits, col =modality, fill = factor(modality),group = 0)) + geom_point( size = 0.5,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + xlab('Blocks') + ylab('Hits (trailing - leading')
+#+ geom_violin(fill = NA, col = "black")
+
+
+
+See general Hit performance across parts: Just to visualize general effects in a classical way
+
+```{r}
+group_detect_part <- oddball %>% 
+  group_by( subject, modality, mod_switch, leading, part) %>% 
+  summarise(hits = mean(detected, na.rm=TRUE))
+
+group_diffdetect_part <- subset(group_detect_part, leading == "Trailing")
+group_diffdetect_part$hits <-group_diffdetect_part$hits -  subset(group_detect_part, leading == "Leading")$hits
+
+
+group_diffdetect_part$part <- factor(group_diffdetect_part$part)
+ezANOVA(group_diffdetect_part, dv=.(hits), wid = .(subject), within = .( mod_switch, modality,part))
+
+
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "A"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "noswitch" & modality == "V"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "A"), paired = T)
+# t.test(hits ~ part, subset(group_diffdetect_part, mod_switch == "switch" & modality == "V"), paired = T)
+
+ggplot(subset(group_diffdetect_part), aes(x=(part), y=hits, col =modality, fill = factor(modality),group = 0)) + geom_point( size = 0.5,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0)  +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + xlab('Blocks') + ylab('Hits (trailing - leading')
+#+ geom_violin(fill = NA, col = "black")
+
+```
+
+
+See general RT performance across parts: Just to visualize general effects in a classical way. I cant run some statistical test because there are some conditions in some participants.
+
+```{r, echo = FALSE}
+group_detect_part_rt <- oddball %>% filter(detected == 1) %>% 
+  group_by( subject, modality, mod_switch, leading, part) %>% 
+  summarise(rt = 1/mean(rt))
+
+group_diffdetect_part_rt <- subset(group_detect_part_rt, leading == "Trailing")
+group_diffdetect_part_rt$rt <-group_diffdetect_part_rt$rt -  subset(group_detect_part_rt, leading == "Leading")$rt
+#group_diffdetect_part$rt <-group_diffdetect_part$rt -  subset(group_detect_part, leading == "Leading")$rt
+
+ggplot(subset(group_diffdetect_part_rt), aes(x=(factor(part)), y=rt, col =modality, fill = factor(modality))) + geom_point( size = 0.5,  position = position_jitter(w = 0.1, h = 0)) + geom_abline(intercept = 0, slope = 0) + geom_boxplot(coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2) +   facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + xlab('Blocks') + ylab('RTs (trailing - leading') 
+
+```
+```{r}
+ezANOVA(subset(group_diffdetect_part_rt), dv=.(rt), wid = .(subject), within = .( mod_switch, modality,part))
+```
+
+```{r}
+#ezANOVA(group_diffdetect_part_rt, dv=.(rt), wid = .(subject), within = .( mod_switch, modality,part))
+ezANOVA(group_diffdetect_part_rt, dv=.(rt), wid = .(subject), within = .( mod_switch, modality,part))
+
+```
+```{r}
+t.test(rt ~ part, subset(group_diffdetect_part_rt, modality == "A" & mod_switch == "switch"), paired = T)
+```
+
+```{r}
+group_detect_part_rt <- oddball %>% filter(detected == 1) %>% 
+  group_by( subject, mod_switch, modali leading, part) %>% 
+  summarise(rt = 1/mean(rt))
+
+ezANOVA(group_diffdetect_part_rt, dv=.(rt), wid = .(subject), within = .( mod_switch, part))
+```
+
+```{r}
+ggplot(data=subset(oddball, detected ==1), aes(x=rt)) +
+  geom_rug() + geom_histogram(bins = 100, alpha = 0.4, col = "blue") +  geom_density(alpha  = 0.4) 
+```
+
+Lets run now the fundamental linear mixed models.
+
+We start with hits, and we use a log regression to predict hits as a function of trial onset. Subject and stimulus as random effects allowing only intercept to vary (not slope)
+
+```{r}
+library(lmerTest) #library(LMERConvenienceFunctions)
+# Scale
+scaled_oddball <- oddball
+scaled_oddball$onset <- scale(scaled_oddball$onset) # lets re-scale the onset times to match the 0-1
+
+# Visualizing the data
+ggplot(subset(oddball), aes(x=(as.numeric(onset)), y=detected, col =leading, fill = factor(leading))) + geom_point( size = 0.02) + geom_abline(intercept = 0, slope = 0) +
+  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method=glm, method.args= list(family = binomial(logit))) #,     se = FALSE, aes(linetype=Tempo))
+
+# First question: Does the leading factor explain anything of our data?
+fith <- glmer((detected) ~ as.numeric(onset) * mod_switch *   modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit")   , data=subset(scaled_oddball))
+
+fith1 <- glmer((detected) ~ as.numeric(onset) * mod_switch * leading * modality + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit"), data=subset(scaled_oddball))
+
+# comparing both models
+anova(fith,fith1)
+```
+
+Leading is relevant. This means that there is a learing effect. Now lets unpackage the effects for each specific condition. Those conditions showing an interaction between leading and onset time variables imply a learning effects based on fits.
+
+```{r}
+
+fithAns <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject)+ (1 |stimulus) ,family = binomial(link = "logit") , data=subset(scaled_oddball, modality == "A" & mod_switch =="noswitch"))
+summary(fithAns)
+
+fithAs <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject) + (1 |stimulus),family = binomial(link = "logit")  , data=subset(scaled_oddball, modality == "A" & mod_switch =="switch"))
+summary(fithAs)
+
+fithVns <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject) + (1 |stimulus) ,family = binomial(link = "logit") , data=subset(scaled_oddball, modality == "V" & mod_switch =="noswitch"))
+summary(fithVns)
+
+fithVs <- glmer((detected) ~ as.numeric(onset)  * leading + (1 | subject)+(1 |stimulus) ,family = binomial(link = "logit")  , data=subset(scaled_oddball, modality == "V" & mod_switch =="switch"))
+summary(fithVs)
+
+```
+
+
+Now lets look at the RTs, and we use a linear regression to predict 1/RT (to normalize the reaction times) as a function of trial onset. Subject and stimulus as random effects allowing only intercept to vary (not slope)
+
+```{r}
+# Visualizing the data
+# RT distributions: Do they make sense? 
+ggplot(data=subset(oddball,detected == 1), aes(x=rt, fill = factor(leading))) + 
+  geom_density(alpha  = 0.4) + 
+  geom_rug() + mytheme + facet_grid(modality~mod_switch) 
+
+# RT mixed models (Note that I am plotting the data against 1/RT to normalize the distributions) 
+
+ggplot(subset(oddball, detected == 1), aes(x=(as.numeric(onset)), y=1/rt, col =leading, fill = factor(leading))) + geom_point(alpha = 0.5, size = 0.002) + geom_abline(intercept = 0, slope = 0) +  facet_grid(modality~mod_switch) + scale_color_manual( values =  c("red","green")) + scale_fill_manual( values =  c("red","green")) + theme_bw(20) + mytheme + geom_smooth(method = "lm") + ylim(c(1, 3))
+  
+# First question: Does the leading factor explain anything of our data?
+fith <- lmer((detected) ~ as.numeric(onset) * mod_switch *   modality + (1 | subject) +  (1 |stimulus) , data=subset(scaled_oddball))
+
+fith1 <- lmer((detected) ~ as.numeric(onset) * mod_switch * leading * modality + (1 | subject) +  (1 |stimulus) , data=subset(scaled_oddball))
+
+# comparing both models
+anova(fith,fith1)
+
+# There is variance explained by leading. Now unpacking the effects by condition 
+fitAnS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "A" & mod_switch == "noswitch"))
+summary(fitAnS)
+
+fitAS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "A" & mod_switch == "switch"))
+summary(fitAS)
+
+
+fitVnS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "V" & mod_switch == "noswitch"))
+summary(fitVnS)
+
+fitVS <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "V" & mod_switch == "switch"))
+summary(fitVS)
+```
+```{r}
+fitAnS1 <- lmer((1/rt) ~  as.numeric(onset)  + leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "A" & mod_switch == "noswitch"))
+fitAnS2 <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "A" & mod_switch == "noswitch"))
+anova(fitAnS1,fitAnS2)
+
+```
+
+```{r}
+fitVnS1 <- lmer((1/rt) ~  as.numeric(onset)  + leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "V" & mod_switch == "noswitch"))
+fitVnS2 <- lmer((1/rt) ~  as.numeric(onset)  * leading + (1 |subject) +  (1 |stimulus), data=subset(scaled_oddball , modality == "V" & mod_switch == "noswitch"))
+anova(fitVnS1,fitVnS2)
+
+```
+
+
+Prepare bootstrapping RT function as suggested by Guillaume A. Rousselet1 and Rand R. Wilcox 2018 (not used in principle)
+```{r}
+
+nonbiased_RTmedian <- function(data, niter) {
+  mu <- replicate(niter,sample(data$rt,length(data$rt),replace = TRUE))
+  mu <- mean(apply(mu, 2, median))
+  mu <- 2*median(data$rt) - mu
+  mu <-as.data.frame(mu)
+  mu
+}
+
+# group_recall_rt <- oddball %>% filter(detected == TRUE) %>% mutate(rt = (rt)) %>% group_by( subject, leading, modality, mod_switch) %>% do(nonbiased_RTmedian(.,niter))
+```
+
+# Analysing Explicit task
+
+Loading explicit test data
+```{r}
+
+
+test <- read_csv('/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_2/csv/test_results.csv',col_types = cols())
+
+test$modality = factor(test$modality, labels=c("AA","VV","AV","VA"))
+test$modality <- factor(test$modality,levels(test$modality)[c(2,1,4,3)])
+#test$trial_type = factor(test$trial_type, labels=c("Normal", "Inverted"))
+test$multimodal = factor(test$multimodal, labels=c("Unimodal", "Multimodal"))
+test$leading_modality = factor(test$leading_modality, labels=c("Visual", "Auditory"))
+test$subject = factor(test$subject)
+test$rkg_f = factor(test$rkg, labels=c("Remember","Know","Guess"))
+test$when = cut(test$order,3, labels=c("Start","Middle","End"))
+test$answer = factor(test$answer, labels=c("First","Second"))
+test$trial_id = factor(test$trial_id)
+std_pair_id = factor(test$std_pair_id)
+
+```
+
+
+
+```{r}
+
+
+avg_test_xmod <- test %>% group_by(multimodal, modality, subject)  %>% summarise(correct= mean(correct))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_test_xmod ), aes(x=factor(modality), y=correct, col = factor(modality), fill = factor(modality))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(20) + ylab("Accuracy") + xlab("Modality") + mytheme +
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)  + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0)
+
+
+
+```
+
+
+
+
+```{r}
+
+avg_test_xmod <- test %>% group_by(multimodal, modality, subject)  %>% summarise(correct= mean(correct))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_test_xmod ), aes(x=factor(modality), y=correct, col = factor(modality), fill = factor(modality))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(20) + ylab("Accuracy") + xlab("Modality") + mytheme +
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)  + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0)
+
+
+# logistic regression comparing intercepts is more appropiated
+test$modality <-relevel(test$modality,"VV")
+fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchance )
+
+
+# Converting the predicted value from log odds into percentage using the formula below
+# exp(0.32152) / (1+exp(0.32152) )  # to get the intercept probabilities
+
+
+test$modality <-relevel(test$modality,"AA")
+fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchance )
+# 
+# test$modality <-relevel(test$modality,"AV")
+# fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+# summary(fitchance )
+# 
+# 
+# test$modality <-relevel(test$modality,"VV")
+# fitchance <- glmer(correct ~ modality  + (1 | subject)  ,family = binomial(link = "logit")  , data=subset(test))
+# summary(fitchance )
+```
+
+avg_test_xmod <- test %>% group_by(multimodal, modality, subject)  %>% summarise(correct= mean(correct))
+avg_test_xmod <- test %>% group_by(multimodal, modality, subject)  %>% summarise(correct= mean(correct))
+
+```{r}
+
+t.test(subset(avg_test_xmod, multimodal == "Multimodal")$correct, mu = 0.5)
+
+```
+
+
+```{r}
+
+
+avg_test_xmodxrkg <- test %>% group_by(multimodal, modality, rkg,  subject)  %>% summarise(correct= mean(correct))
+
+#ezANOVA(avg_test_xmod, dv=.(correct), wid = .(subject), within = .( modality))
+
+ggplot(subset(avg_test_xmodxrkg), aes(x=factor(rkg), y=correct, col = factor(modality), fill = factor(modality))) + geom_violin(col = NA, alpha = 0.3,trim=FALSE) +
+ theme_bw(20) + ylab("Accuracy") + xlab("Modality") + mytheme + facet_grid(multimodal~modality) +
+  geom_point( position = position_jitter(w = 0.2, h = 0)) + geom_boxplot( coef = 2, outlier.size=0 , col = "black", fill="NA", width = 0.2)  + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0)
+
+
+
+```
+
+
+```{r}
+fitmulti <- glmer(correct ~ modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Multimodal"))
+summary(fitmulti)
+
+
+fituni <- glmer(correct ~ modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Unimodal"))
+summary(fituni)
+
+```
+```{r}
+
+fituni <- glmer(correct ~  (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Unimodal"))
+summary(fituni)
+fituni1 <- glmer(correct ~ modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, multimodal == "Unimodal"))
+summary(fituni1)
+anova(fituni, fituni1)
+
+```
+
+```{r}
+fit <- glmer(correct ~ multimodal + modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fit)
+
+
+```
+avg_data_subj <- aggregate(cbind(correct)~multimodal+modality+subject , data = subset(test), mean)
+t.test(subset(test, modality == "AA")$correct, mu = 0.5)
+
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality , data = subset(test), mean)
+print(avg_data)
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality+rkg , data = subset(test), length)
+print(avg_data)
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+
+
+
+```{r}
+fitnomultinolead <- glmer(correct ~ rkg_f  + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitnomultinolead)
+```
+
+
+
+
+```{r}
+
+# fitchancerkg <- glmer(correct ~ modality + rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+# summary(fitchancerkg)
+# anova(fitchancerkg)
+fitnomultinolead <- glmer(correct ~ rkg_f  + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitnomultinolead)
+
+fitmulti <- glmer(correct ~ rkg_f * multimodal + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitmulti)
+#anova(fitnomulti,fitmulti)
+
+fitleading <- glmer(correct ~ rkg_f *leading_modality + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+
+anova(fitnomultinolead, fitleading )
+# It seems that there is an effect of multisensory modality that interacts with ranking - know, and it is independent of the leading modality
+
+ggplot(subset(avg_test_xmodrkg ), aes(x=factor(rkg_f), y=correct, col = (nobs), fill = (nobs))) + geom_bar(stat="identity", position = "dodge") + facet_grid(.~modality) + mytheme + scale_y_continuous(limits=c(0,1), breaks = c(0, 0.5, 1)) + geom_abline(intercept = 0.5, slope = 0) + theme(axis.text.x = element_text(angle = 40, hjust = 1, size =10))
+
+# manually binomial tests per conditions
+
+binomial_tests <- test %>% group_by(multimodal, modality, leading_modality, rkg_f)  %>% summarise(nobs = length(correct), correct = length(correct[correct==1])) %>% rowwise() %>% mutate(pvalue = binom.test(correct, nobs, p = 0.5, alternative = c("two.sided"), conf.level = 0.95)$p.value) 
+
+p.adjust(binomial_tests$pvalue, method = "hochberg")
+
+
+
+test$modality <-relevel(test$modality,"VV")
+test$rkg_f <-relevel(test$rkg_f,"Know")
+fitVVsimple <- glmer(correct ~ (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+
+fitVV <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+summary(fitVV)
+
+# comparing VV model with rankings
+anova(fitVVsimple,fitVV)
+
+
+test$modality <-relevel(test$modality,"VV")
+test$rkg_f <-relevel(test$rkg_f,"Remember")
+fitVV <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+summary(fitVV)
+
+
+test$modality <-relevel(test$modality,"AA")
+test$rkg_f <-relevel(test$rkg_f,"Know")
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+test$modality <-relevel(test$modality,"AA")
+test$rkg_f <-relevel(test$rkg_f,"Remember")
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+test$modality <-relevel(test$modality,"AA")
+test$rkg_f <-relevel(test$rkg_f,"Guess")
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+
+
+fitAA <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA)
+
+fitVV <- glmer(correct ~ rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "VV"))
+summary(fitVV)
+
+fitchanceXrkg <- glmer(correct ~ modality * rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchanceXrkg)
+
+
+
+
+```
+
+
+
+fitchancerkg <- glmer(correct ~ modality + rkg_f + (1 | subject) ,family = binomial(link = "logit")  , data=subset(test))
+summary(fitchancerkg)
+anova(fitchancerkg)
+
+
+anova(fitchance,fitchancerkg)
+anova(fitchance,fitchanceXrkg)
+anova(fitchancerkg,fitchanceXrkg)
+
+
+avg_test_xmod <- 
+
+
+do(.)
+
+a = binom.test(77, 122, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+           0.05 / 12
+
+binom.test(124, 210, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+           0.05 / 12
+fitAA <- g
+(correct ~  (1 | subject) ,family = binomial(link = "logit")  , data=subset(test, modality == "AA"))
+summary(fitAA )
+
+inverselogit <- function(x){ exp(x) / (1+exp(x) ) }
+
+inverselogit( coef(fitAA)["(Intercept)"]
+
+
+
+```
+
+
+avg_data_subj <- aggregate(cbind(correct)~multimodal+modality+subject , data = subset(test), mean)
+t.test(subset(test, modality == "AA")$correct, mu = 0.5)
+avg_data <- aggregate(cbind(correct)~multimodal+modality , data = subset(test), mean)
+print(avg_data)
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality+rkg , data = subset(test), length)
+print(avg_data)
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+
+binom.test(20, 35, p = 0.5,
+           alternative = c("two.sided"),
+           conf.level = 0.95)
+           
+           
+Por ahora los resultados parecen indicar que la gente solo aprende los auditivos, tan unimodales como multimodales, esto se manifiesta de forma implicita en RTs. Aunque solo aprenden de forma explicita los auditivos
+
+
+```
+

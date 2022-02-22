@@ -1,0 +1,33 @@
+---
+title: "analysis_test"
+output: html_document
+---
+
+
+```{r include=FALSE}
+library(readr)
+library(tidyverse)
+
+test <- read_csv('/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/test_results.csv',col_types = cols())
+)
+test$modality = factor(test$modality, labels=c("AA","VV","AV","VA"))
+test$modality <- factor(test$modality,levels(test$modality)[c(2,1,4,3)])
+test$trial_type = factor(test$trial_type, labels=c("Normal", "Inverted"))
+test$multimodal = factor(test$multimodal, labels=c("Unimodal", "Multimodal"))
+test$leading_modality = factor(test$leading_modality, labels=c("Visual", "Auditory"))
+test$subject = factor(test$subject)
+test$rkg_f = factor(test$rkg, labels=c("Remember","Know","Guess"))
+test$when = cut(test$order,3, labels=c("Start","Middle","End"))
+test$answer = factor(test$answer, labels=c("First","Second"))
+test$trial_id = factor(test$trial_id)
+$std_pair_id = factor(test$std_pair_id)
+
+
+```
+```{r}
+test
+```
+
+avg_data_subj <- aggregate(cbind(correct)~multimodal+modality+subject , data = subset(test), mean)
+
+avg_data <- aggregate(cbind(correct)~multimodal+modality , data = subset(test), mean)

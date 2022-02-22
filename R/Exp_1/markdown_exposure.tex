@@ -1,0 +1,483 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={Exposure\_analysis},
+            pdfauthor={Alexis Perez-Bellido \& Daniel Duato},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\providecommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+
+  \title{Exposure\_analysis}
+    \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+    \author{Alexis Perez-Bellido \& Daniel Duato}
+    \preauthor{\centering\large\emph}
+  \postauthor{\par}
+      \predate{\centering\large\emph}
+  \postdate{\par}
+    \date{5/22/2019}
+
+
+\begin{document}
+\maketitle
+
+\hypertarget{r-markdown}{%
+\subsection{R Markdown}\label{r-markdown}}
+
+Loading packages and setting paths
+
+\begin{verbatim}
+## Registered S3 methods overwritten by 'ggplot2':
+##   method         from 
+##   [.quosures     rlang
+##   c.quosures     rlang
+##   print.quosures rlang
+\end{verbatim}
+
+\begin{verbatim}
+## -- Attaching packages -------------------------------------------------------------------------------------------------------- tidyverse 1.2.1 --
+\end{verbatim}
+
+\begin{verbatim}
+## v ggplot2 3.1.1     v purrr   0.3.2
+## v tibble  2.1.1     v dplyr   0.8.1
+## v tidyr   0.8.3     v stringr 1.4.0
+## v ggplot2 3.1.1     v forcats 0.4.0
+\end{verbatim}
+
+\begin{verbatim}
+## -- Conflicts ----------------------------------------------------------------------------------------------------------- tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+\end{verbatim}
+
+\begin{verbatim}
+## Reaction Time Analysis (version 0.1-2)
+\end{verbatim}
+
+\begin{verbatim}
+## Registered S3 methods overwritten by 'lme4':
+##   method                          from
+##   cooks.distance.influence.merMod car 
+##   influence.merMod                car 
+##   dfbeta.influence.merMod         car 
+##   dfbetas.influence.merMod        car
+\end{verbatim}
+
+Reading exposure data and properly code the variables
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{oddball <-}\StringTok{ }\KeywordTok{read_csv}\NormalTok{(}\StringTok{'/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/exposure_oddballs.csv'}\NormalTok{,}\DataTypeTok{col_types =} \KeywordTok{cols}\NormalTok{())}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{subject =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{subject, }\DataTypeTok{ordered=}\OtherTok{TRUE}\NormalTok{)}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{modality =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{modality,}\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"V"}\NormalTok{,}\StringTok{"A"}\NormalTok{))}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{leading =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{leading,}\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"Leading"}\NormalTok{,}\StringTok{"Trailing"}\NormalTok{))}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{pair_modality =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{pair_modality, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"AA"}\NormalTok{,}\StringTok{"VV"}\NormalTok{,}\StringTok{"AV"}\NormalTok{,}\StringTok{"VA"}\NormalTok{))}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{next_mod =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{next_mod,}\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"V"}\NormalTok{,}\StringTok{"A"}\NormalTok{)) }\CommentTok{#the modality of the following stimulus (probably not useful)}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{modal_comb <-}\StringTok{ "multisensory"} \CommentTok{#conditions aggregated into multimodal/unimodal}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{modal_comb[oddball}\OperatorTok{$}\NormalTok{pair_modality }\OperatorTok{==}\StringTok{ "AA"} \OperatorTok{|}\StringTok{ }\NormalTok{oddball}\OperatorTok{$}\NormalTok{pair_modality }\OperatorTok{==}\StringTok{ "VV"}\NormalTok{] <-}\StringTok{ "unisensory"}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{stimulus =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{stimulus)}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{pair =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{pair)}
+\NormalTok{oddball}\OperatorTok{$}\NormalTok{mod_switch =}\StringTok{ }\KeywordTok{factor}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{mod_switch, }\DataTypeTok{labels =} \KeywordTok{c}\NormalTok{(}\StringTok{"noswitch"}\NormalTok{, }\StringTok{"switch"}\NormalTok{))}
+\KeywordTok{head}\NormalTok{(oddball)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 12
+##   subject onset modality mod_switch leading block pair  pair_modality
+##   <ord>   <dbl> <fct>    <fct>      <fct>   <dbl> <fct> <fct>        
+## 1 9        9.96 A        switch     Traili~     1 11    VA           
+## 2 9       24.6  A        switch     Leading     1 8     AV           
+## 3 9       27.0  A        noswitch   Traili~     1 3     AA           
+## 4 9       28.5  V        noswitch   Traili~     1 6     VV           
+## 5 9       36.9  A        noswitch   Leading     1 7     AV           
+## 6 9       40.0  V        switch     Leading     1 10    VA           
+## # ... with 4 more variables: next_mod <fct>, order <dbl>, stimulus <fct>,
+## #   modal_comb <chr>
+\end{verbatim}
+
+Now I am going to load the keypresses and relate to the timings of the
+oddballs
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{#loading keypresses info}
+\NormalTok{keypresses <-}\StringTok{ }\KeywordTok{read_csv}\NormalTok{(}\StringTok{"/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/exposure_keypresses.csv"}\NormalTok{,}\DataTypeTok{col_types =} \KeywordTok{cols}\NormalTok{())}
+\NormalTok{keypresses}\OperatorTok{$}\NormalTok{subject =}\StringTok{ }\KeywordTok{factor}\NormalTok{(keypresses}\OperatorTok{$}\NormalTok{subject, }\DataTypeTok{ordered=}\OtherTok{TRUE}\NormalTok{)}
+
+\NormalTok{shortest_rt <-}\StringTok{ }\FloatTok{0.2} \CommentTok{# this is the minimum time that is considered as a response to the target}
+\NormalTok{longest_rt <-}\StringTok{ }\FloatTok{1.5} \CommentTok{# this is the maximum time considered as a response}
+
+\NormalTok{oddball <-}\StringTok{ }\NormalTok{oddball }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{mutate}\NormalTok{( }\DataTypeTok{closest_press =} 
+            \KeywordTok{map_dbl}\NormalTok{(oddball}\OperatorTok{$}\NormalTok{onset, }\ControlFlowTok{function}\NormalTok{(x) }\KeywordTok{which}\NormalTok{(keypresses}\OperatorTok{$}\NormalTok{time}\OperatorTok{-}\NormalTok{(x }\OperatorTok{+}\StringTok{ }\NormalTok{shortest_rt)}\OperatorTok{>=}\DecValTok{0}\NormalTok{)[}\DecValTok{1}\NormalTok{])) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{mutate}\NormalTok{( }\DataTypeTok{rt =}\NormalTok{ keypresses}\OperatorTok{$}\NormalTok{time[closest_press]}\OperatorTok{-}\NormalTok{onset) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{replace_na}\NormalTok{(}\KeywordTok{list}\NormalTok{(}\DataTypeTok{rt =} \OtherTok{Inf}\NormalTok{)) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{mutate}\NormalTok{( }\DataTypeTok{detected =}\NormalTok{ rt }\OperatorTok{<}\StringTok{ }\NormalTok{longest_rt)}
+
+\NormalTok{oddball <-}\StringTok{ }\NormalTok{oddball }\OperatorTok{%>%}\StringTok{ }\KeywordTok{mutate}\NormalTok{(}\DataTypeTok{part =} \KeywordTok{ifelse}\NormalTok{(block }\OperatorTok{>}\DecValTok{4}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{))}
+
+
+\KeywordTok{head}\NormalTok{(oddball)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 16
+##   subject onset modality mod_switch leading block pair  pair_modality
+##   <ord>   <dbl> <fct>    <fct>      <fct>   <dbl> <fct> <fct>        
+## 1 9        9.96 A        switch     Traili~     1 11    VA           
+## 2 9       24.6  A        switch     Leading     1 8     AV           
+## 3 9       27.0  A        noswitch   Traili~     1 3     AA           
+## 4 9       28.5  V        noswitch   Traili~     1 6     VV           
+## 5 9       36.9  A        noswitch   Leading     1 7     AV           
+## 6 9       40.0  V        switch     Leading     1 10    VA           
+## # ... with 8 more variables: next_mod <fct>, order <dbl>, stimulus <fct>,
+## #   modal_comb <chr>, closest_press <dbl>, rt <dbl>, detected <lgl>,
+## #   part <dbl>
+\end{verbatim}
+
+Looking at the impact of stimulus type on detection
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{stim_detec <-}\StringTok{ }\NormalTok{oddball }\OperatorTok{%>%}\StringTok{ }\KeywordTok{group_by}\NormalTok{(stimulus) }\OperatorTok{%>%}\StringTok{ }\KeywordTok{mutate}\NormalTok{(}\DataTypeTok{hits =} \KeywordTok{mean}\NormalTok{(detected))}
+
+\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{subset}\NormalTok{(oddball), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\KeywordTok{as.numeric}\NormalTok{(stimulus), }\DataTypeTok{y=}\KeywordTok{as.numeric}\NormalTok{(detected), }\DataTypeTok{col =}\NormalTok{ modality)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{scale_color_manual}\NormalTok{( }\DataTypeTok{values =}  \KeywordTok{c}\NormalTok{(}\StringTok{"blue"}\NormalTok{,}\StringTok{"orange"}\NormalTok{))}\OperatorTok{+}\StringTok{ }\KeywordTok{scale_fill_manual}\NormalTok{( }\DataTypeTok{values =}  \KeywordTok{c}\NormalTok{(}\StringTok{"blue"}\NormalTok{,}\StringTok{"orange"}\NormalTok{)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{( }\DataTypeTok{data =}\NormalTok{ stim_detec, }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ stimulus, }\DataTypeTok{y =}\NormalTok{ hits), }\DataTypeTok{col =} \StringTok{"black"}\NormalTok{ ) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_smooth}\NormalTok{() }\OperatorTok{+}\StringTok{ }\KeywordTok{ylab}\NormalTok{(}\StringTok{"hits"}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{xlab}\NormalTok{(}\StringTok{"stim ID"}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme_bw}\NormalTok{(}\DecValTok{20}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{16}\NormalTok{), }\DataTypeTok{axis.title=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{14}\NormalTok{),}\DataTypeTok{axis.line =} \KeywordTok{element_line}\NormalTok{(}\DataTypeTok{colour =} \StringTok{"black"}\NormalTok{),}
+                       \DataTypeTok{panel.grid.major =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.grid.minor =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.border =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.background =} \KeywordTok{element_blank}\NormalTok{()) }\OperatorTok{+}\StringTok{ }\KeywordTok{ggtitle}\NormalTok{(}\StringTok{"Stimulus detection"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+\end{verbatim}
+
+\includegraphics{markdown_exposure_files/figure-latex/unnamed-chunk-4-1.pdf}
+
+See general performance across blocks
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{group_detect_blocks <-}\StringTok{ }\NormalTok{oddball }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{group_by}\NormalTok{( subject, block, modality) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{summarise}\NormalTok{(}\DataTypeTok{hits =} \KeywordTok{mean}\NormalTok{(detected))}
+
+\NormalTok{group_detect_rt_blocks <-}\StringTok{ }\NormalTok{oddball }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{group_by}\NormalTok{( subject, block, modality) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{summarise}\NormalTok{(}\DataTypeTok{rt =} \KeywordTok{mean}\NormalTok{(rt))}
+
+
+\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{subset}\NormalTok{(group_detect_blocks), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\KeywordTok{factor}\NormalTok{(block), }\DataTypeTok{y=}\NormalTok{hits, }\DataTypeTok{col =}\NormalTok{ modality)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{geom_boxplot}\NormalTok{(}\DataTypeTok{fill =} \OtherTok{NA}\NormalTok{, }\DataTypeTok{alpha =} \FloatTok{0.6}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme_bw}\NormalTok{(}\DecValTok{20}\NormalTok{) }\OperatorTok{+}\StringTok{   }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{16}\NormalTok{), }\DataTypeTok{axis.title=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{14}\NormalTok{),}\DataTypeTok{axis.line =} \KeywordTok{element_line}\NormalTok{(}\DataTypeTok{colour =} \StringTok{"black"}\NormalTok{),}
+                         \DataTypeTok{panel.grid.major =} \KeywordTok{element_blank}\NormalTok{(),}
+                         \DataTypeTok{panel.grid.minor =} \KeywordTok{element_blank}\NormalTok{(),}
+                         \DataTypeTok{panel.border =} \KeywordTok{element_blank}\NormalTok{(),}
+                         \DataTypeTok{panel.background =} \KeywordTok{element_blank}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{markdown_exposure_files/figure-latex/unnamed-chunk-5-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{subset}\NormalTok{(group_detect_rt_blocks), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\KeywordTok{factor}\NormalTok{(block), }\DataTypeTok{y=}\NormalTok{rt, }\DataTypeTok{col =}\NormalTok{ modality)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{geom_boxplot}\NormalTok{(}\DataTypeTok{fill =} \OtherTok{NA}\NormalTok{, }\DataTypeTok{alpha =} \FloatTok{0.6}\NormalTok{) }\OperatorTok{+}
+\StringTok{  }\KeywordTok{theme_bw}\NormalTok{(}\DecValTok{20}\NormalTok{) }\OperatorTok{+}\StringTok{  }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{16}\NormalTok{), }\DataTypeTok{axis.title=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{14}\NormalTok{),}\DataTypeTok{axis.line =} \KeywordTok{element_line}\NormalTok{(}\DataTypeTok{colour =} \StringTok{"black"}\NormalTok{),}
+                        \DataTypeTok{panel.grid.major =} \KeywordTok{element_blank}\NormalTok{(),}
+                        \DataTypeTok{panel.grid.minor =} \KeywordTok{element_blank}\NormalTok{(),}
+                        \DataTypeTok{panel.border =} \KeywordTok{element_blank}\NormalTok{(),}
+                        \DataTypeTok{panel.background =} \KeywordTok{element_blank}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{markdown_exposure_files/figure-latex/unnamed-chunk-5-2.pdf}
+
+The first block is clearly different from the rest. I going to remove it
+from the next analyses
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# eval=FALSE, include=FALSE}
+\NormalTok{group_recall <-}\StringTok{ }\NormalTok{oddball }\OperatorTok{%>%}\StringTok{ }\KeywordTok{filter}\NormalTok{(block }\OperatorTok{>}\DecValTok{1}\NormalTok{) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{group_by}\NormalTok{( subject, leading, modality, mod_switch) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{summarise}\NormalTok{(}\DataTypeTok{hits =} \KeywordTok{mean}\NormalTok{(detected))}
+
+\CommentTok{# group_recall_rt <-  oddball %>% filter(detected == TRUE & block >1) %>%  }
+\CommentTok{#   group_by( subject, leading, modality, mod_switch) %>% }
+\CommentTok{#   summarise(mu = mexgauss(rt)[1],sigma = mexgauss(rt)[2])}
+
+
+\NormalTok{group_recall_rt <-}\StringTok{  }\NormalTok{oddball }\OperatorTok{%>%}\StringTok{ }\KeywordTok{filter}\NormalTok{(detected }\OperatorTok{==}\StringTok{ }\OtherTok{TRUE} \OperatorTok{&}\StringTok{ }\NormalTok{block }\OperatorTok{>}\DecValTok{1}\NormalTok{) }\OperatorTok{%>%}\StringTok{ }\KeywordTok{mutate}\NormalTok{(}\DataTypeTok{rt =}\NormalTok{ (rt)) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{group_by}\NormalTok{( subject, leading, modality, mod_switch) }\OperatorTok{%>%}\StringTok{  }
+\StringTok{  }\KeywordTok{summarise}\NormalTok{(}\DataTypeTok{mu =} \KeywordTok{median}\NormalTok{(rt))}
+
+\KeywordTok{ezANOVA}\NormalTok{(group_recall, }\DataTypeTok{dv=}\NormalTok{.(hits), }\DataTypeTok{wid =}\NormalTok{ .(subject), }\DataTypeTok{within =}\NormalTok{ .(mod_switch, leading, modality))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## $ANOVA
+##                        Effect DFn DFd         F          p p<.05
+## 2                  mod_switch   1  49 1.7546622 0.19143666      
+## 3                     leading   1  49 1.0389508 0.31307204      
+## 4                    modality   1  49 0.2527396 0.61740480      
+## 5          mod_switch:leading   1  49 0.8569595 0.35912795      
+## 6         mod_switch:modality   1  49 3.2538512 0.07740503      
+## 7            leading:modality   1  49 0.2296755 0.63389657      
+## 8 mod_switch:leading:modality   1  49 1.0868989 0.30227588      
+##            ges
+## 2 0.0017739862
+## 3 0.0016563472
+## 4 0.0002538153
+## 5 0.0010206927
+## 6 0.0033506720
+## 7 0.0003187551
+## 8 0.0006879151
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{ezANOVA}\NormalTok{(group_recall_rt, }\DataTypeTok{dv=}\NormalTok{.(mu), }\DataTypeTok{wid =}\NormalTok{ .(subject), }\DataTypeTok{within =}\NormalTok{ .(mod_switch, leading, modality))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## $ANOVA
+##                        Effect DFn DFd            F          p p<.05
+## 2                  mod_switch   1  49 6.9326113971 0.01129093     *
+## 3                     leading   1  49 0.0226310681 0.88103801      
+## 4                    modality   1  49 1.5217879024 0.22323386      
+## 5          mod_switch:leading   1  49 2.6436637057 0.11037875      
+## 6         mod_switch:modality   1  49 0.7369018186 0.39483496      
+## 7            leading:modality   1  49 1.3931430201 0.24357326      
+## 8 mod_switch:leading:modality   1  49 0.0002835704 0.98663300      
+##            ges
+## 2 1.435806e-02
+## 3 4.024178e-05
+## 4 4.636252e-03
+## 5 4.838243e-03
+## 6 1.683730e-03
+## 7 2.898771e-03
+## 8 9.760561e-07
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{subset}\NormalTok{(group_recall), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{(leading), }\DataTypeTok{y=}\NormalTok{hits, }\DataTypeTok{col =}\NormalTok{ leading, }\DataTypeTok{fill =} \KeywordTok{factor}\NormalTok{(leading))) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{scale_color_manual}\NormalTok{( }\DataTypeTok{values =}  \KeywordTok{c}\NormalTok{(}\StringTok{"blue"}\NormalTok{,}\StringTok{"orange"}\NormalTok{)) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_boxplot}\NormalTok{(}\DataTypeTok{fill =} \OtherTok{NA}\NormalTok{, }\DataTypeTok{alpha =} \FloatTok{0.6}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{scale_fill_manual}\NormalTok{( }\DataTypeTok{values =}  \KeywordTok{c}\NormalTok{(}\StringTok{"blue"}\NormalTok{,}\StringTok{"orange"}\NormalTok{)) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_point}\NormalTok{( }\DataTypeTok{size =} \DecValTok{2}\NormalTok{,  }\DataTypeTok{position =} \KeywordTok{position_jitter}\NormalTok{(}\DataTypeTok{w =} \FloatTok{0.1}\NormalTok{, }\DataTypeTok{h =} \DecValTok{0}\NormalTok{)) }\OperatorTok{+}\StringTok{ }\KeywordTok{facet_grid}\NormalTok{(modality}\OperatorTok{~}\NormalTok{mod_switch) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{theme_bw}\NormalTok{(}\DecValTok{20}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{16}\NormalTok{), }\DataTypeTok{axis.title=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{14}\NormalTok{),}\DataTypeTok{axis.line =} \KeywordTok{element_line}\NormalTok{(}\DataTypeTok{colour =} \StringTok{"black"}\NormalTok{),}
+                       \DataTypeTok{panel.grid.major =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.grid.minor =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.border =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.background =} \KeywordTok{element_blank}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{markdown_exposure_files/figure-latex/unnamed-chunk-6-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{ggplot}\NormalTok{(}\KeywordTok{subset}\NormalTok{(group_recall_rt), }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{(leading), }\DataTypeTok{y=}\NormalTok{mu, }\DataTypeTok{col =}\NormalTok{ leading, }\DataTypeTok{fill =} \KeywordTok{factor}\NormalTok{(leading))) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{scale_color_manual}\NormalTok{( }\DataTypeTok{values =}  \KeywordTok{c}\NormalTok{(}\StringTok{"blue"}\NormalTok{,}\StringTok{"orange"}\NormalTok{)) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_boxplot}\NormalTok{(}\DataTypeTok{fill =} \OtherTok{NA}\NormalTok{, }\DataTypeTok{alpha =} \FloatTok{0.6}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{scale_fill_manual}\NormalTok{( }\DataTypeTok{values =}  \KeywordTok{c}\NormalTok{(}\StringTok{"blue"}\NormalTok{,}\StringTok{"orange"}\NormalTok{)) }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_point}\NormalTok{( }\DataTypeTok{size =} \DecValTok{2}\NormalTok{,  }\DataTypeTok{position =} \KeywordTok{position_jitter}\NormalTok{(}\DataTypeTok{w =} \FloatTok{0.1}\NormalTok{, }\DataTypeTok{h =} \DecValTok{0}\NormalTok{)) }\OperatorTok{+}\StringTok{ }\KeywordTok{facet_grid}\NormalTok{(modality}\OperatorTok{~}\NormalTok{mod_switch) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{theme_bw}\NormalTok{(}\DecValTok{20}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{axis.text=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{16}\NormalTok{), }\DataTypeTok{axis.title=}\KeywordTok{element_text}\NormalTok{(}\DataTypeTok{size=}\DecValTok{14}\NormalTok{),}\DataTypeTok{axis.line =} \KeywordTok{element_line}\NormalTok{(}\DataTypeTok{colour =} \StringTok{"black"}\NormalTok{),}
+                       \DataTypeTok{panel.grid.major =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.grid.minor =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.border =} \KeywordTok{element_blank}\NormalTok{(),}
+                       \DataTypeTok{panel.background =} \KeywordTok{element_blank}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{markdown_exposure_files/figure-latex/unnamed-chunk-6-2.pdf}
+
+Reading test phase data and properly coding it
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{test <-}\StringTok{ }\KeywordTok{read_csv}\NormalTok{(}\StringTok{'/Users/alex/Dropbox/PROJECTS/MS_Statistical_learning/Behavioral/Exp_1/csv/test_results.csv'}\NormalTok{,}\DataTypeTok{col_types =} \KeywordTok{cols}\NormalTok{())}
+
+\NormalTok{test}\OperatorTok{$}\NormalTok{modality =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{modality, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"AA"}\NormalTok{,}\StringTok{"VV"}\NormalTok{,}\StringTok{"AV"}\NormalTok{,}\StringTok{"VA"}\NormalTok{))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{modality <-}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{modality,}\KeywordTok{levels}\NormalTok{(test}\OperatorTok{$}\NormalTok{modality)[}\KeywordTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{4}\NormalTok{,}\DecValTok{3}\NormalTok{)])}
+\CommentTok{#test$trial_type = factor(test$trial_type, labels=c("Normal", "Inverted"))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{multimodal =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{multimodal, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"Unimodal"}\NormalTok{, }\StringTok{"Multimodal"}\NormalTok{))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{leading_modality =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{leading_modality, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"Visual"}\NormalTok{, }\StringTok{"Auditory"}\NormalTok{))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{subject =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{subject)}
+\NormalTok{test}\OperatorTok{$}\NormalTok{rkg_f =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{rkg, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"Remember"}\NormalTok{,}\StringTok{"Know"}\NormalTok{,}\StringTok{"Guess"}\NormalTok{))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{when =}\StringTok{ }\KeywordTok{cut}\NormalTok{(test}\OperatorTok{$}\NormalTok{order,}\DecValTok{3}\NormalTok{, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"Start"}\NormalTok{,}\StringTok{"Middle"}\NormalTok{,}\StringTok{"End"}\NormalTok{))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{answer =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{answer, }\DataTypeTok{labels=}\KeywordTok{c}\NormalTok{(}\StringTok{"First"}\NormalTok{,}\StringTok{"Second"}\NormalTok{))}
+\NormalTok{test}\OperatorTok{$}\NormalTok{trial_id =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{trial_id)}
+\NormalTok{std_pair_id =}\StringTok{ }\KeywordTok{factor}\NormalTok{(test}\OperatorTok{$}\NormalTok{std_pair_id)}
+
+\NormalTok{avg_data_subj <-}\StringTok{ }\KeywordTok{aggregate}\NormalTok{(}\KeywordTok{cbind}\NormalTok{(correct)}\OperatorTok{~}\NormalTok{multimodal}\OperatorTok{+}\NormalTok{modality}\OperatorTok{+}\NormalTok{subject , }\DataTypeTok{data =} \KeywordTok{subset}\NormalTok{(test), mean)}
+\KeywordTok{t.test}\NormalTok{(}\KeywordTok{subset}\NormalTok{(test, modality }\OperatorTok{==}\StringTok{ "AA"}\NormalTok{)}\OperatorTok{$}\NormalTok{correct, }\DataTypeTok{mu =} \FloatTok{0.5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  One Sample t-test
+## 
+## data:  subset(test, modality == "AA")$correct
+## t = 3.4475, df = 458, p-value = 0.000618
+## alternative hypothesis: true mean is not equal to 0.5
+## 95 percent confidence interval:
+##  0.5341922 0.6248492
+## sample estimates:
+## mean of x 
+## 0.5795207
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{avg_data <-}\StringTok{ }\KeywordTok{aggregate}\NormalTok{(}\KeywordTok{cbind}\NormalTok{(correct)}\OperatorTok{~}\NormalTok{multimodal}\OperatorTok{+}\NormalTok{modality , }\DataTypeTok{data =} \KeywordTok{subset}\NormalTok{(test), mean)}
+\KeywordTok{print}\NormalTok{(avg_data)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   multimodal modality   correct
+## 1   Unimodal       VV 0.5098039
+## 2   Unimodal       AA 0.5795207
+## 3 Multimodal       VA 0.4901961
+## 4 Multimodal       AV 0.5272331
+\end{verbatim}
+
+binom.test(20, 35, p = 0.5, alternative = c(``two.sided''), conf.level =
+0.95)
+
+Por ahora los resultados parecen indicar que la gente solo aprende los
+auditivos, tan unimodales como multimodales, esto se manifiesta de forma
+implicita en RTs. Aunque solo aprenden de forma explicita los auditivos
+
+```
+
+merge dataframes using tidyverse (dplyer) gather, keys, joins
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{import}\NormalTok{ numpy }\ImportTok{as}\NormalTok{ np}
+\ImportTok{import}\NormalTok{ matplotlib.pyplot }\ImportTok{as}\NormalTok{ plt}
+\NormalTok{plt.plot([}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{])}
+\NormalTok{plt.ylabel(}\StringTok{'some numbers'}\NormalTok{)}
+\NormalTok{plt.show()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{markdown_exposure_files/figure-latex/unnamed-chunk-8-1.pdf}
+
+
+\end{document}
